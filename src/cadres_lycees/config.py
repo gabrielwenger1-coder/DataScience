@@ -1,4 +1,4 @@
-"""Constantes du projet. Toute valeur fixée par le plan (PLAN §2) vit ici et nulle part ailleurs."""
+"""Constantes du projet : les choix fixés par le plan (§2) et les paramètres des sources."""
 
 from pathlib import Path
 
@@ -32,3 +32,18 @@ VARIABLES_AWS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
 VARIABLE_BUCKET_S3 = "BUCKET_S3"
 PREFIXE_S3 = "projet-cadres-lycees"
 DOSSIER_LOCAL = Path(__file__).parents[2] / "data"
+
+# Annuaire de l'éducation (source 3)
+URL_ANNUAIRE = (
+    "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
+    "fr-en-annuaire-education/exports/parquet"
+)
+CHEMIN_RAW_ANNUAIRE = "raw/annuaire_education.parquet"
+# Délai d'attente de `requests` par lecture, pas durée totale (le téléchargement dure ~12 s)
+DELAI_TELECHARGEMENT_S = 120
+# Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
+# restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,
+# 302 général, 306 polyvalent
+NATURES_LYCEES = (300, 301, 302, 306)
+# `code_type_contrat_prive` du privé sous contrat : 30 association (toutes classes), 31 (partie)
+CONTRATS_PRIVE_RETENUS = ("30", "31")

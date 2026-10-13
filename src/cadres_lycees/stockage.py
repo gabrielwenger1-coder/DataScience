@@ -29,14 +29,19 @@ def _systeme_fichiers(chemin: str) -> tuple[AbstractFileSystem, str]:
     return LocalFileSystem(auto_mkdir=True), f"{config.DOSSIER_LOCAL}/{chemin}"
 
 
+def ecrire_octets(octets: bytes, chemin: str) -> None:
+    """Écrit `octets` tels quels à `chemin` (copie brute d'une source)."""
+    systeme, complet = _systeme_fichiers(chemin)
+    systeme.pipe_file(complet, octets)
+
+
 def ecrire_parquet(df: pd.DataFrame, chemin: str) -> None:
     """Écrit `df` en Parquet à `chemin`. Un GeoDataFrame est écrit en GeoParquet."""
-    systeme, complet = _systeme_fichiers(chemin)
     # Sérialiser en mémoire d'abord : si to_parquet échoue, aucun fichier partiel ne reste,
     # et existe() ne le prendra pas pour un succès (la collecte ne le retélécharge pas).
     tampon = io.BytesIO()
     df.to_parquet(tampon)
-    systeme.pipe_file(complet, tampon.getvalue())
+    ecrire_octets(tampon.getvalue(), chemin)
 
 
 def lire_parquet(chemin: str) -> pd.DataFrame:
