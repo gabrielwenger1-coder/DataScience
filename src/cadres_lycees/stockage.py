@@ -2,6 +2,7 @@
 
 import io
 import os
+import warnings
 
 import geopandas as gpd
 import pandas as pd
@@ -18,14 +19,21 @@ def _systeme_fichiers(chemin: str) -> tuple[AbstractFileSystem, str]:
 
     `chemin` est relatif à la racine du stockage du projet, par exemple "raw/annuaire.parquet".
     Les valeurs des identifiants ne sont jamais lues ici : s3fs les prend dans l'environnement.
+    S3 n'est utilisé que si les identifiants AWS et le nom du bucket sont tous définis ; sinon
+    le code continue en local avec un avertissement, pour qu'un compte sans BUCKET_S3 ne plante
+    pas (PLAN §7).
     """
-    if all(variable in os.environ for variable in config.VARIABLES_AWS):
-        assert config.VARIABLE_BUCKET_S3 in os.environ, (
-            f"Identifiants AWS trouvés mais pas {config.VARIABLE_BUCKET_S3} : "
-            "définir le nom du bucket (voir README)."
-        )
+    variables_s3 = (*config.VARIABLES_AWS, config.VARIABLE_BUCKET_S3)
+    manquantes = [variable for variable in variables_s3 if variable not in os.environ]
+    if not manquantes:
         bucket = os.environ[config.VARIABLE_BUCKET_S3]
         return s3fs.S3FileSystem(), f"{bucket}/{config.PREFIXE_S3}/{chemin}"
+    # stacklevel=3 : la ligne affichée est l'appel du code appelant, pas nos fonctions internes
+    warnings.warn(
+        f"Variables d'environnement manquantes : {', '.join(manquantes)}. Les données sont "
+        f"lues et écrites dans le dossier local {config.DOSSIER_LOCAL} (voir README).",
+        stacklevel=3,
+    )
     return LocalFileSystem(auto_mkdir=True), f"{config.DOSSIER_LOCAL}/{chemin}"
 
 

@@ -28,8 +28,8 @@ Le rapport est `rapport.ipynb`, publié avec Quarto.
 
 Les données ne sont pas dans Git. `stockage.py` les lit et les écrit :
 
-- sur le S3 du SSPCloud si `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY` sont définies (c'est le cas sur un service SSPCloud). Il faut alors définir le nom du bucket : `export BUCKET_S3=<nom du bucket>`. Les fichiers sont dans `s3://<bucket>/projet-cadres-lycees/`, et l'adresse du serveur est lue par s3fs dans `AWS_ENDPOINT_URL`, que le SSPCloud définit aussi ;
-- sinon dans le dossier local `data/`.
+- sur le S3 du SSPCloud si `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (définies sur un service SSPCloud) et `BUCKET_S3` sont définies. Le nom du bucket dépend du compte : `export BUCKET_S3=<nom du bucket>` (un `export` fait dans un terminal n'est pas vu par un noyau Jupyter déjà lancé). Les fichiers sont dans `s3://<bucket>/projet-cadres-lycees/`, et l'adresse du serveur est lue par s3fs dans `AWS_ENDPOINT_URL`, que le SSPCloud définit aussi ;
+- sinon dans le dossier local `data/`, avec un avertissement (c'est le cas d'un compte qui n'a pas défini `BUCKET_S3`).
 
 ## Organisation
 

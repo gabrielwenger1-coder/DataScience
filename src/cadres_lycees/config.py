@@ -25,8 +25,9 @@ AIRES_CANDIDATES = {
     "Strasbourg": "010",
 }
 
-# Stockage (PLAN §7) : le S3 du SSPCloud si les identifiants AWS sont dans l'environnement,
-# sinon le dossier data/ à la racine du dépôt (ignoré par git)
+# Stockage (PLAN §7) : le S3 du SSPCloud si les identifiants AWS et le nom du bucket sont dans
+# l'environnement, sinon le dossier data/ à la racine du dépôt (ignoré par git), avec un
+# avertissement
 VARIABLES_AWS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
 # Le nom du bucket dépend du compte : chacun le définit dans cette variable d'environnement
 VARIABLE_BUCKET_S3 = "BUCKET_S3"
