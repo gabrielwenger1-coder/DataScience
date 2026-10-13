@@ -16,7 +16,9 @@
       "Bash(uv sync *)",
       "Bash(uv lock *)",
       "Bash(uv venv *)",
-      "Bash(uv pip install --python /tmp/*)"
+      "Bash(uv pip install --python /tmp/*)",
+      "Edit(//tmp/essais/**)",
+      "Read(//tmp/essais/**)"
     ],
     "deny": [
       "Read(**/.env)",

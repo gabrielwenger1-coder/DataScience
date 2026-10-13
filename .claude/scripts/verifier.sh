@@ -74,6 +74,12 @@ etape "aucune donnée suivie par Git" aucune_donnee_suivie
 etape "aucun fichier suivi de plus de 5 Mo" aucun_gros_fichier
 etape "aucun secret ni .env suivi par Git" aucun_secret
 etape "aucune URL en dur hors de config.py" aucune_url_en_dur
+# Le budget de tests est un avertissement : l'étudiant peut avoir validé un test de plus.
+if bilan=$(python3 .claude/hooks/budget_tests.py 2>&1); then
+    resultats+=("OK      $bilan")
+else
+    resultats+=("AVERT   $bilan")
+fi
 
 echo "=== Récapitulatif ==="
 printf '%s\n' "${resultats[@]}"

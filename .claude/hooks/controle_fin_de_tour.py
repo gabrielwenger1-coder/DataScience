@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import budget_tests
+
 RACINE = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")).resolve()
 SEUIL_DIFF = 400  # lignes ajoutées au-delà desquelles un ticket mérite d'être découpé
 
@@ -62,13 +64,8 @@ def lignes_ajoutees() -> int:
     return total
 
 
-def main() -> None:
-    """Lance les contrôles et décide si Claude peut rendre la main."""
-    entree = json.load(sys.stdin)
-    fichiers = fichiers_modifies()
-    if not fichiers:
-        return
-
+def controles(fichiers: list[str]) -> list[str]:
+    """Lance ruff, pytest et le budget de tests, et renvoie la description des échecs."""
     problemes = []
     ruff = commande_ruff()
     if ruff:
@@ -78,10 +75,29 @@ def main() -> None:
             problemes.append(f"ruff check :\n{sortie[-2000:]}")
     if (RACINE / "tests").is_dir() and (RACINE / ".venv/bin/python").exists():
         options = ["-q", "-x", "--tb=short", "-m", "not reseau"]
-        code, sortie = lancer([".venv/bin/python", "-m", "pytest", *options], delai=240)
+        code, sortie = lancer([".venv/bin/python", "-m", "pytest", "tests", *options], delai=240)
         if code not in (0, 5):  # 5 : aucun test collecté
             problemes.append(f"pytest (tests marqués « reseau » exclus) :\n{sortie[-2500:]}")
+    if any(fichier.startswith("tests/") for fichier in fichiers) and (
+        depassement := budget_tests.depassements(RACINE)
+    ):
+        problemes.append(
+            f"Trop de tests dans le dépôt : {depassement}. Les vérifications ponctuelles vont "
+            f"dans {budget_tests.DOSSIER_ESSAIS}/, pas dans tests/. Ne garde que les tests qui "
+            "protègent un calcul critique : supprime les autres, ou demande à l'étudiant "
+            "s'il veut en garder un."
+        )
+    return problemes
 
+
+def main() -> None:
+    """Lance les contrôles et décide si Claude peut rendre la main."""
+    entree = json.load(sys.stdin)
+    fichiers = fichiers_modifies()
+    if not fichiers:
+        return
+
+    problemes = controles(fichiers)
     message = None
     if (ajout := lignes_ajoutees()) > SEUIL_DIFF:
         message = (

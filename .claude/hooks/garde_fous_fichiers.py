@@ -12,6 +12,8 @@ import sys
 from fnmatch import fnmatch
 from pathlib import Path
 
+import budget_tests
+
 RACINE = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")).resolve()
 
 # Le plan, les consignes et le harness lui-même : un agent ne doit pas pouvoir
@@ -93,6 +95,39 @@ def est_prose(source: str) -> bool:
     return any(not ligne.startswith("#") for ligne in lignes)
 
 
+def contenu_apres(chemin: str, outil: str, params: dict) -> str:
+    """Renvoie le contenu du fichier une fois l'écriture faite (Write, Edit ou MultiEdit)."""
+    if outil == "Write":
+        return params.get("content", "")
+    fichier = RACINE / chemin
+    contenu = fichier.read_text(errors="replace") if fichier.exists() else ""
+    for modification in params.get("edits") or [params]:
+        contenu = contenu.replace(
+            modification.get("old_string", ""), modification.get("new_string", ""), 1
+        )
+    return contenu
+
+
+def raisons_tests(chemin: str, outil: str, params: dict, existe: bool) -> list[str]:
+    """Liste les raisons de soumettre à l'étudiant l'ajout ou l'extension d'un test."""
+    if not chemin.startswith("tests/"):
+        return []
+    raisons = []
+    if not existe and chemin not in budget_tests.TESTS_PREVUS:
+        raisons.append(
+            f"Nouveau fichier dans tests/ : {chemin}. Seuls les tests qui protègent un calcul "
+            "critique restent dans le dépôt (CLAUDE.md) ; une vérification ponctuelle va dans "
+            f"{budget_tests.DOSSIER_ESSAIS}/."
+        )
+    nombre = budget_tests.nb_tests(contenu_apres(chemin, outil, params))
+    if nombre > budget_tests.MAX_TESTS_PAR_FICHIER:
+        raisons.append(
+            f"{chemin} aurait {nombre} tests (budget : {budget_tests.MAX_TESTS_PAR_FICHIER} "
+            "par fichier) : ne garde que les plus importants."
+        )
+    return raisons
+
+
 def raison_refus(chemin: str, texte: str, agent: str) -> str | None:
     """Renvoie la raison de refuser l'écriture, ou None si rien ne l'interdit."""
     if SECRETS.search(texte):
@@ -143,13 +178,15 @@ def raisons_validation(chemin: str, texte: str, agent: str, outil: str, params: 
     if not existe and not correspond(chemin, ARBORESCENCE):
         raisons.append(
             f"Nouveau fichier hors de l'arborescence prévue (PLAN §7) : {chemin}. "
-            "Un module utils.py ou un fichier de notes est rarement justifié."
+            "Un module utils.py ou un fichier de notes est rarement justifié ; une vérification "
+            f"ponctuelle va dans {budget_tests.DOSSIER_ESSAIS}/."
         )
     if existe and chemin.startswith("tests/") and agent != "testeur":
         raisons.append(
             "Modification d'un test existant : vérifier qu'on ne l'adapte pas au "
             "code pour le faire passer."
         )
+    raisons += raisons_tests(chemin, outil, params, existe)
     if chemin == "rapport.ipynb" and outil == "Write" and existe:
         raisons.append("Réécriture complète de rapport.ipynb : passer par NotebookEdit.")
     if (

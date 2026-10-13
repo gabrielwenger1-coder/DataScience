@@ -28,10 +28,19 @@ Avant toute action, lis en priorité ses sections 2 (choix fixés), 4 (pipeline)
 - Aucun fichier de compte rendu (`NOTES.md`, `SUMMARY.md`…) : le compte rendu va dans ta réponse. Seule exception, `docs/exploration_sources.md`, que tu tiens à jour quand une source révèle un piège.
 - Une bibliothèque utile s'ajoute avec `uv add` (ou `uv add --dev`), sans demander. Justifie le choix dans ta réponse : les étudiants doivent pouvoir défendre chaque dépendance. Pour essayer une bibliothèque sans l'ajouter au projet, utilise un environnement jetable hors du dépôt (`uv venv /tmp/essai`, puis `uv pip install --python /tmp/essai/bin/python <paquet>`).
 
+## Tests : peu, et seulement les importants
+Beaucoup de tests, c'est du code généré que personne ne relit : un correcteur le voit, et les étudiants doivent pouvoir défendre chaque ligne.
+- Pour vérifier ton code, écris autant de tests ou de scripts jetables que tu veux **hors du dépôt**, dans le dossier temporaire de la session (par défaut `/tmp/essais/`) : `uv run pytest /tmp/essais/`. Lance-les, puis laisse-les là. Ils ne sont jamais commités.
+- Dans `tests/`, seulement les tests qui protègent un calcul critique, dont une erreur fausserait les résultats sans aucun signal : `accessibilite.indicateurs` (`tests/test_accessibilite.py`), `geo.paires_contigues` et le passage de géographie (`tests/test_geo.py`), ce que le plan prévoit. Si un autre calcul le mérite (anneaux, bootstrap par commune…), propose-le à l'étudiant avec la raison avant d'écrire le test.
+- Budget : 3 fichiers de test, 6 tests par fichier au plus, sur des données jouets minuscules, calculables à la main.
+- Pas de test pour la collecte (réseau), la lecture et l'écriture de fichiers, les figures, `config.py`, ni pour une fonction triviale. Pas de mock.
+- Les contrôles de cohérence des données (nombre de lignes après une jointure, plages de valeurs, unicité des codes) sont des `assert` avec un message dans le pipeline, pas des tests.
+- À la fin d'un ticket, passe `tests/` en revue : tout test qui ne protège pas un calcul critique est supprimé.
+
 ## Travail à plusieurs agents
 - Toi, l'agent principal, es le seul à écrire dans `src/` et `rapport.ipynb`. Un seul ticket en cours à la fois.
 - `explorateur-donnees` inspecte une source et renvoie son schéma. Lance-en un par source, en parallèle.
-- `testeur` écrit les tests d'une nouvelle fonction à partir de sa spécification, avant l'implémentation, dans `tests/` uniquement.
+- `testeur` écrit, avant l'implémentation, les tests d'un calcul critique (voir « Tests ») à partir de sa spécification, dans `tests/` uniquement.
 - `relecteur` et `auditeur-methodo` relisent en fin de ticket, en parallèle, sans rien modifier. Tu corriges les points bloquants qu'ils remontent.
 - `pilote` dirige le projet : bilan d'avancement, parties à alléger, pistes nouvelles venues des données. Il propose de légers amendements au plan et se confronte à `correcteur`, qui note le projet selon la grille du cours. Les deux passent par `/pilotage`, et l'étudiant tranche. Tu ne modifies jamais le plan toi-même : si un ticket révèle qu'il devrait changer, signale-le et propose `/pilotage`.
 - Un travail parallèle qui écrit du code passe par des branches distinctes. Jamais deux agents sur le même fichier.
@@ -43,12 +52,12 @@ Les hooks de `.claude/hooks/` refusent ou soumettent à l'étudiant :
 - les secrets ;
 - les URL ou chemins en dur hors de `config.py` ;
 - les nouveaux fichiers hors de l'arborescence de la section 7 ;
-- la modification d'un test existant, `noqa` et `skip` ;
+- la modification d'un test existant, un nouveau fichier de test hors de ceux du plan, plus de 6 tests dans un fichier, `noqa` et `skip` ;
 - le texte rédigé dans `rapport.ipynb` ;
 - une installation qui contournerait `pyproject.toml` (`pip install` dans le projet) : `uv add` s'utilise à la place ;
 - les commits et les push sur `main`.
 
-En fin de tour, ruff et pytest tournent sur les fichiers modifiés.
+En fin de tour, ruff et pytest tournent sur les fichiers modifiés, et le budget de tests est vérifié.
 Si un hook refuse une action, ne le contourne pas par un autre outil ou un autre chemin : corrige, ou explique et demande. Un contrôle qui passe ne vérifie que ce qu'il vérifie.
 Contrôle complet de reproductibilité : `/verifier`, ou `bash .claude/scripts/verifier.sh`.
 

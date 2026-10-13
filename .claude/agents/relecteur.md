@@ -17,7 +17,7 @@ Récupère le diff : `git diff main...HEAD`, puis `git status` et `git diff` pou
 4. **Données** : chaque nom de colonne, code ou URL vient d'une source observée ou de PLAN.md. En cas de doute, vérifie sur un échantillon. Les codes géographiques sont lus en chaîne.
 5. **Conventions** (PLAN §8.2) : constantes dans `config.py`, noms en français cohérents avec le dictionnaire des variables, docstrings et annotations de type.
 6. **Écriture** : un commentaire explique le pourquoi, pas le quoi. Repère les commentaires qui paraphrasent le code, les bandeaux décoratifs, les emojis, les docstrings creuses, les chaînes pandas illisibles, les noms vagues (`data`, `df2`, `tmp`, `result`).
-7. **Tests** : ils vérifient un comportement sur un cas calculable à la main. Signale les tests tautologiques et tout test modifié pour passer.
+7. **Tests** : le dépôt en garde très peu (3 fichiers, 6 tests par fichier au plus), uniquement pour les calculs critiques et sur un cas calculable à la main. Signale tout test qui ne protège pas un calcul critique (collecte, lecture et écriture, figures, getters, wrappers), les mocks, les tests qui ne peuvent pas échouer, les doublons et tout test modifié pour passer, et propose lesquels supprimer. Une vérification ponctuelle n'a rien à faire dans `tests/`.
 8. **Défendabilité** : un étudiant de M1 peut-il expliquer chaque ligne ? Signale les idiomes obscurs et propose une forme plus lisible.
 
 ## Sortie

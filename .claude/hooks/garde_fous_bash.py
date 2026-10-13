@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import budget_tests
+
 RACINE = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")).resolve()
 
 PROTEGES = r"(\S*/)?(PLAN\.md|CLAUDE\.md|ruff\.toml)\b|\S*\.claude/"
@@ -55,6 +57,11 @@ REFUS = (
     ),
 )
 A_VALIDER = (
+    (
+        r"\bgit\s+add\b[^;&|\n]*\btests(/|\s|$)",
+        "Ajout d'un test au dépôt : seuls les tests qui protègent un calcul critique restent "
+        f"(CLAUDE.md). Une vérification ponctuelle va dans {budget_tests.DOSSIER_ESSAIS}/.",
+    ),
     (r"\bgit\s+commit\b", "Commit : l'étudiant relit le diff et le message (PLAN §8.1)."),
     (r"\bgit\s+push\b", "Push : l'étudiant valide."),
     (r"\bgit\s+(merge|rebase)\b", "Fusion : elle passe normalement par une pull request."),
@@ -107,6 +114,17 @@ def branche_courante() -> str:
     return resultat.stdout.strip()
 
 
+def tests_indexes() -> list[str]:
+    """Liste les fichiers de tests/ déjà ajoutés à l'index git."""
+    resultat = subprocess.run(
+        ["git", "-C", str(RACINE), "diff", "--cached", "--name-only", "--", "tests/"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return resultat.stdout.split()
+
+
 def cible_hors_projet(segment: str, cwd: Path) -> bool:
     """Vrai si la commande installe dans un environnement ou un dossier hors du projet."""
     cibles = OPTION_CIBLE.findall(segment) + INTERPRETEUR.findall(segment)
@@ -151,6 +169,12 @@ def main() -> None:
             "deny",
             "Tu es sur main, qui est protégée : crée d'abord une branche "
             "(feat/…, fix/…, docs/…) (PLAN §8.1).",
+        )
+    if re.search(r"\bgit\s+commit\b", commande) and (tests := tests_indexes()):
+        repondre(
+            "ask",
+            f"Ce commit contient des tests ({', '.join(tests)}) : seuls ceux qui protègent un "
+            "calcul critique restent dans le dépôt (CLAUDE.md). Relis le diff et le message.",
         )
     for motif, raison in A_VALIDER:
         if re.search(motif, commande):
