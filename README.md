@@ -24,6 +24,13 @@ uv run pytest                    # lance les tests
 
 Le rapport est `rapport.ipynb`, publié avec Quarto.
 
+### Stockage des données
+
+Les données ne sont pas dans Git. `stockage.py` les lit et les écrit :
+
+- sur le S3 du SSPCloud si `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY` sont définies (c'est le cas sur un service SSPCloud). Il faut alors définir le nom du bucket : `export BUCKET_S3=<nom du bucket>`. Les fichiers sont dans `s3://<bucket>/projet-cadres-lycees/`, et l'adresse du serveur est lue par s3fs dans `AWS_ENDPOINT_URL`, que le SSPCloud définit aussi ;
+- sinon dans le dossier local `data/`.
+
 ## Organisation
 
 - `src/cadres_lycees/` : le code du pipeline, un module par étape (voir PLAN §7).

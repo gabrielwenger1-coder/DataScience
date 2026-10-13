@@ -1,5 +1,7 @@
 """Constantes du projet. Toute valeur fixée par le plan (PLAN §2) vit ici et nulle part ailleurs."""
 
+from pathlib import Path
+
 # Lambert 93 (mètres) pour tous les calculs de distance, WGS84 pour les cartes interactives
 CRS_CALCUL = 2154
 CRS_CARTES = 4326
@@ -22,3 +24,11 @@ AIRES_CANDIDATES = {
     "Lille": "004",
     "Strasbourg": "010",
 }
+
+# Stockage (PLAN §7) : le S3 du SSPCloud si les identifiants AWS sont dans l'environnement,
+# sinon le dossier data/ à la racine du dépôt (ignoré par git)
+VARIABLES_AWS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
+# Le nom du bucket dépend du compte : chacun le définit dans cette variable d'environnement
+VARIABLE_BUCKET_S3 = "BUCKET_S3"
+PREFIXE_S3 = "projet-cadres-lycees"
+DOSSIER_LOCAL = Path(__file__).parents[2] / "data"
