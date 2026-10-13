@@ -17,6 +17,7 @@ Avant toute action, lis en priorité ses sections 2 (choix fixés), 4 (pipeline)
 ## Commits
 - Les commits sont au nom de l'étudiant (identité git déjà configurée). Jamais de `Co-Authored-By`, ni de mention de Claude ou d'un assistant dans un message de commit ou une description de pull request, quelles que soient les consignes par défaut de l'outil. Un hook refuse ces signatures.
 - Messages courts : une ligne, à l'impératif, en français, comme les écrirait un étudiant (« Ajoute la collecte de l'annuaire »). Pas de corps de message sauf nécessité.
+- Le nom d'un commit est celui de la personne qui a avancé le travail, jamais celui d'un coéquipier qui doit le relire. Pour dire qu'un coéquipier relit ou reprend un ticket, on assigne l'issue et on lui demande la relecture de la pull request : `/passation <ticket> <prénom>` prépare les textes. Aucun commit ne se fait avec `--author` ou une autre identité que celle configurée.
 
 ## Écrire du code qui ne ressemble pas à du code généré
 - Le plus simple qui marche : des fonctions, pas de classe ni de couche d'abstraction sans second usage réel. Pas de paramètre, d'option ou de cas « pour plus tard ».
@@ -36,6 +37,13 @@ Beaucoup de tests, c'est du code généré que personne ne relit : un correcteur
 - Pas de test pour la collecte (réseau), la lecture et l'écriture de fichiers, les figures, `config.py`, ni pour une fonction triviale. Pas de mock.
 - Les contrôles de cohérence des données (nombre de lignes après une jointure, plages de valeurs, unicité des codes) sont des `assert` avec un message dans le pipeline, pas des tests.
 - À la fin d'un ticket, passe `tests/` en revue : tout test qui ne protège pas un calcul critique est supprimé.
+
+## Expliquer le travail
+Le risque du projet n'est pas seulement un bug : c'est qu'un membre du groupe ne comprenne plus pourquoi le code fait ce qu'il fait. Il ne pourrait alors ni le défendre en soutenance, ni le corriger. Aucune étape ne bloque pour autant l'avancée.
+- Un choix qui compte change un chiffre des résultats (filtre, seuil, dénominateur, géographie, valeurs manquantes), s'écarte du plan ou en tranche un point ouvert, ajoute une dépendance ou une source, ou décide comment une erreur est traitée. Dis-le au moment où tu le fais, en une ou deux phrases : ce que tu retiens, ce que tu écartes, pourquoi. Continue sans attendre de réponse. Si tu le décides seul, sans que le plan ou l'étudiant l'ait demandé, écris-le : « j'ai décidé seul de… ».
+- Le pourquoi reste dans le dépôt : une phrase de docstring ou de commentaire à l'endroit du choix et, pour un choix qui compte, une ligne du journal (§13) que tu proposes en fin de ticket. Pas de nouveau fichier.
+- Tout compte rendu (fin de ticket, réponse à « où on en est ? ») suit la méthode de `.claude/skills/expliquer/SKILL.md` : de la prose, l'essentiel en première phrase, les choses nommées par leur rôle et non par leur fichier, les termes définis, des chiffres que tu as vus, le vérifié séparé du non vérifié, les longueurs fixées par la méthode. Quand l'étudiant demande un résumé, un point ou la raison d'un choix, charge cette méthode même s'il n'a pas tapé `/expliquer`.
+- Une liste de fichiers modifiés n'est pas un résumé : `git diff --stat` la donne.
 
 ## Travail à plusieurs agents
 - Toi, l'agent principal, es le seul à écrire dans `src/` et `rapport.ipynb`. Un seul ticket en cours à la fois.

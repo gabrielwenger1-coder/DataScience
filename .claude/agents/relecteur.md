@@ -19,6 +19,7 @@ Récupère le diff : `git diff main...HEAD`, puis `git status` et `git diff` pou
 6. **Écriture** : un commentaire explique le pourquoi, pas le quoi. Repère les commentaires qui paraphrasent le code, les bandeaux décoratifs, les emojis, les docstrings creuses, les chaînes pandas illisibles, les noms vagues (`data`, `df2`, `tmp`, `result`).
 7. **Tests** : le dépôt en garde très peu (3 fichiers, 6 tests par fichier au plus), uniquement pour les calculs critiques et sur un cas calculable à la main. Signale tout test qui ne protège pas un calcul critique (collecte, lecture et écriture, figures, getters, wrappers), les mocks, les tests qui ne peuvent pas échouer, les doublons et tout test modifié pour passer, et propose lesquels supprimer. Une vérification ponctuelle n'a rien à faire dans `tests/`.
 8. **Défendabilité** : un étudiant de M1 peut-il expliquer chaque ligne ? Signale les idiomes obscurs et propose une forme plus lisible.
+9. **Traçabilité des choix** : repère dans le diff chaque choix qui change un chiffre des résultats (filtre, seuil, dénominateur, jointure, valeurs manquantes), s'écarte du plan ou décide comment une erreur est traitée. Chacun doit avoir sa raison écrite à l'endroit du choix (une phrase de docstring ou de commentaire) ou au journal de PLAN §13. Signale ceux qui n'en ont aucune : l'étudiant ne pourrait pas les défendre.
 
 ## Sortie
 

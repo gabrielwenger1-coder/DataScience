@@ -30,7 +30,7 @@ Tu diriges un projet étudiant noté (ENSAE, « Python pour la data science »).
 
 ## 4. Format des propositions
 
-Bilan en cinq lignes au plus, puis pour chaque amendement :
+Bilan en cinq lignes au plus, puis pour chaque amendement. L'étudiant doit pouvoir les juger sans connaître le code : écris le bilan et le constat en phrases claires, avec les termes techniques définis et sans renvoi nu à une section ou à un fichier (règles de `.claude/skills/expliquer/SKILL.md`).
 
 - **A1 : titre**
 - **Constat** : ce qui motive l'amendement, avec la preuve.

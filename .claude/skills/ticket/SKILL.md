@@ -14,11 +14,13 @@ Ticket demandé : $ARGUMENTS
 5. **Implémenter.** Le minimum qui satisfait le ticket et les tests, une fonction à la fois. Ne modifie pas un test pour le faire passer : si un test te semble faux, dis-le.
 6. **Vérifier.** Lance `uv run pytest -q` et `uv run ruff check`, ainsi que tes essais jetables (`uv run pytest /tmp/essais/`). Passe ensuite `tests/` en revue et supprime tout test qui ne protège pas un calcul critique. Exécute ensuite le code sur de vraies données et montre la sortie (comptes, schéma, valeurs extrêmes) : un test vert ne prouve pas que les données sont bonnes.
 7. **Revue.** Lance en parallèle l'agent `relecteur` et, si le diff touche la construction des variables ou l'analyse, l'agent `auditeur-methodo`. Corrige les points bloquants. Liste les autres sans les corriger d'office.
-8. **Rendre.** Termine par :
-   - **Fait** : 3 à 5 puces.
+8. **Rendre.** Termine par, dans cet ordre :
+   - **En clair** : le compte rendu du ticket, selon la méthode de `.claude/skills/expliquer/SKILL.md` (lis-la). De la prose : ce que le projet sait faire de plus, puis un paragraphe par choix qui compte (retenu, écarté, effet sur les résultats), puis ce que tu as décidé seul. Pas de liste de fichiers.
    - **Pour tester** : les commandes exactes.
    - **Tests gardés** : les fichiers de test ajoutés au dépôt et, pour chacun, le calcul critique qu'il protège ; sinon « aucun ».
    - **Commit proposé** : une ligne courte, à l'impératif, en français, comme l'écrirait l'étudiant. Ni mention de Claude, ni `Co-Authored-By`. Ajoute `Closes #n` seulement s'il y a une issue.
+   - **Journal proposé** : une ligne (date | décision | raison | auteur) par choix qui compte, en français courant : la décision dite par ce qu'elle fait, la raison, l'effet sur les résultats. Laisse la colonne « Auteur » à l'étudiant, qui ajoute les lignes au journal (§13) : tu ne modifies pas le plan. S'il n'y en a aucune, écris « aucune ».
+   - **Passation** : si un coéquipier doit relire et reprendre ce ticket, propose `/passation <ticket> <prénom>` ; sinon, rien.
    - **À comprendre avant la soutenance** : 2 ou 3 questions sur les choix de ce ticket.
    - **Écarts au plan** : ce qui, dans ce ticket, s'écarte du plan ou suggère de le changer (donnée absente, piste nouvelle, partie peu informative). S'il y en a, propose `/pilotage` ; sinon, écris « aucun ».
    - **Leçon** : si une erreur de ce ticket risque de se reproduire, une ligne à ajouter à `.claude/lecons.md` ; sinon rien.

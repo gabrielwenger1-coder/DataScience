@@ -12,7 +12,7 @@ Aucun code n'est écrit pendant un point de pilotage. Attends le résultat de ch
 1. **Bilan et propositions.** Lance l'agent `pilote` (nomme-le `pilote` si l'outil le permet) avec l'idée ou la question éventuelle. Il renvoie un bilan et au plus trois amendements.
 2. **Évaluation indépendante.** Lance l'agent `correcteur`. Donne-lui les amendements tels que formulés, mais pas le bilan ni le raisonnement du pilote, pour qu'il juge le dépôt par lui-même. Il renvoie la note prévisionnelle, son avis sur chaque amendement et les corrections au meilleur gain.
 3. **Confrontation.** Transmets l'avis complet du correcteur au pilote (SendMessage à son nom ou à son identifiant, pour qu'il garde son contexte). Il répond point par point : retenu, modifié ou rejeté. S'il modifie un amendement en profondeur ou en ajoute un, soumets la nouvelle version au correcteur. Deux rondes au plus.
-4. **Arbitrage.** Présente à l'étudiant, sans rien appliquer :
+4. **Arbitrage.** Présente à l'étudiant, sans rien appliquer, en phrases claires et avec les termes techniques définis (méthode de `.claude/skills/expliquer/SKILL.md`) :
    - la note prévisionnelle par critère (état actuel, puis si le plan est exécuté) ;
    - chaque amendement final, avec l'avis du correcteur et la réponse du pilote ;
    - les désaccords restants, en exposant les deux positions sans trancher ;
