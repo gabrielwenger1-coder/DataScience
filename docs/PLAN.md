@@ -453,4 +453,16 @@ Tu assistes un groupe de trois étudiants sur un projet noté. Le cours interdit
 | Date | Décision | Raison | Auteur |
 |------|----------|--------|--------|
 | 13/10/2026 | Rayon principal 5 km ; lycées généraux, technologiques et polyvalents, privés sous contrat ; variable cible : cadres parmi les actifs de 25-54 ans | Fixé avant les résultats (section 2) | Groupe |
+| 13/10/2026 | Source 1 : conversion vers le COG 2025 par la table de passage annuelle 2025 ; dénominateur de la part de cadres = actifs occupés + chômeurs ayant déjà travaillé | Le fichier n'est pas livré en COG 2025 (RP2011 en COG 2013, RP2022 en COG 2024) et c'est la définition des actifs qu'il donne | Giulio |
+| 13/10/2026 | `cartiflette==0.4.0` depuis PyPI, version épinglée, au lieu de l'installation GitHub du §12.2 ; appels avec `year=2025` et `simplification=0`, puis `.to_crs(2154)` | L'installation GitHub donne un autre paquet, sans `carti_download` ; par défaut l'appel prend l'année courante, une simplification de 80 et ne publie qu'en EPSG:4326, alors que le §2.1 fixe le COG 2025 et le Lambert 93 | Giulio |
+| 13/10/2026 | `pynsee` abandonné | Il impose `pandas<3.0` et n'est pas nécessaire : les fichiers de l'Insee se lisent directement | Giulio |
+| 13/10/2026 | `python-calamine` ajouté, xlsx de l'Insee lus avec `engine="calamine"` | openpyxl, le moteur par défaut de pandas, n'ouvre pas ces fichiers ; calamine lit les 4 xlsx testés le 13/10 | Giulio |
+| 13/10/2026 | Lycées du §2.4 repérés par `code_nature` (300, 301, 302, 306) et non par les colonnes `voie_*` | Les `voie_*` de l'annuaire sont trop souvent vides ou fausses | Giulio |
+| 13/10/2026 | Collecte de l'annuaire : l'export complet est copié tel quel dans `raw/`, puis filtré en pandas, au lieu d'un `where` côté serveur | L'annuaire change chaque jour et les variantes du §5.6 refont le filtre sans retélécharger ; le filtre pandas donne les mêmes 2 571 lignes que le `where` | Giulio |
+| 13/10/2026 | Collecte de l'annuaire : une ligne par site, les doublons d'UAI sont traités au nettoyage | 21 lignes pour 9 UAI dans les 8 départements candidats (établissements multi-sites), avec la même commune et les mêmes coordonnées sur toutes les lignes d'un UAI | Giulio |
+| 13/10/2026 | Un lycée sans statut public ou privé fait échouer la collecte (l'UAI est nommé) au lieu d'être écarté | Un filtre `== "Public"` perdrait sans erreur un lycée public (`0271911F`, département 27) dont le statut est vide | Giulio |
+| 13/10/2026 | Stockage sur S3 si `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY` sont définies, avec le nom du bucket dans la variable d'environnement `BUCKET_S3` ; sinon dossier local `data/` | Le nom du bucket dépend du compte, il ne peut donc pas être écrit dans `config.py` | Giulio |
+| 13/10/2026 | pytest et nb-clean (listés au §8.2 parmi les dépendances principales), ruff et pre-commit déclarés en dépendances de développement | Ils servent au développement et non à l'exécution du rapport | Giulio |
+| 13/10/2026 | Hooks pre-commit locaux (nb-clean et ruff) lancés avec `uv run` | Ils utilisent les versions de `uv.lock`, comme le reste du projet | Giulio |
+| 13/10/2026 | Python borné à `>=3.13,<3.14` | Les dépendances ont été résolues et testées sous Python 3.13 seulement | Giulio |
 | | | | |
