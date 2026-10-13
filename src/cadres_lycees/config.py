@@ -42,6 +42,22 @@ URL_ANNUAIRE = (
 CHEMIN_RAW_ANNUAIRE = "raw/annuaire_education.parquet"
 # Délai d'attente de `requests` par lecture, pas durée totale (le téléchargement dure ~12 s)
 DELAI_TELECHARGEMENT_S = 120
+# Zonage en aires d'attraction des villes 2020 (source 8), géographie au 01/01/2025. Le zip de
+# l'Insee est permanent : on contrôle son sha256 au téléchargement
+URL_AAV = "https://www.insee.fr/fr/statistiques/fichier/4803954/AAV2020_au_01-01-2025.zip"
+SHA256_AAV = "738f81b12832fe294bd24ddbfe3a31830c20d850143fc8b4393f18d4b8ee8181"
+CHEMIN_RAW_AAV = "raw/AAV2020_au_01-01-2025.zip"
+XLSX_AAV = "AAV2020_au_01-01-2025.xlsx"
+FEUILLE_AAV = "Composition_communale"
+# Les noms de variables sont à la ligne 6 de la feuille, les lignes 1 à 4 sont des métadonnées
+ENTETE_AAV = 5
+# Nombre de communes du COG 2025, le même que dans les contours de cartiflette
+NB_COMMUNES_AAV = 34875
+# Codes de `CATEAAV2020` (feuille Documentation du classeur) : 11 commune-centre, 12 autre commune
+# du pôle principal, 13 commune d'un pôle secondaire, 20 commune de la couronne, 30 commune hors
+# attraction des villes. Un code inconnu fait échouer la lecture
+CATEGORIES_AAV = ("11", "12", "13", "20", "30")
+
 # Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
 # restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,
 # 302 général, 306 polyvalent

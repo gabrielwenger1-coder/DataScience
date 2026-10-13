@@ -43,6 +43,12 @@ def ecrire_octets(octets: bytes, chemin: str) -> None:
     systeme.pipe_file(complet, octets)
 
 
+def lire_octets(chemin: str) -> bytes:
+    """Lit le fichier `chemin` tel quel (copie brute d'une source)."""
+    systeme, complet = _systeme_fichiers(chemin)
+    return systeme.cat_file(complet)
+
+
 def ecrire_parquet(df: pd.DataFrame, chemin: str) -> None:
     """Écrit `df` en Parquet à `chemin`. Un GeoDataFrame est écrit en GeoParquet."""
     # Sérialiser en mémoire d'abord : si to_parquet échoue, aucun fichier partiel ne reste,

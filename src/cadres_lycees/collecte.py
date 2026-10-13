@@ -1,6 +1,11 @@
 """Téléchargement des sources de données, avec une copie brute dans raw/ (idempotent)."""
 
+import hashlib
+import io
+import zipfile
+
 import geopandas as gpd
+import pandas as pd
 import requests
 
 from cadres_lycees import config, stockage
@@ -53,3 +58,42 @@ def annuaire_education(departements: list[str]) -> gpd.GeoDataFrame:
     sans_lycee = set(codes) - set(lycees["code_departement"])
     assert not sans_lycee, f"Aucun lycée trouvé dans les départements {sorted(sans_lycee)}"
     return lycees.reset_index(drop=True)
+
+
+def aav_2020() -> pd.DataFrame:
+    """Renvoie la composition communale du zonage en aires d'attraction des villes 2020.
+
+    Une ligne par commune du COG 2025, avec `AAV2020` (code de l'aire, "000" hors aire) et
+    `CATEAAV2020` (commune-centre, pôle ou couronne). Tout est lu en chaîne : "013" perdrait son
+    zéro en entier. Lyon, Marseille et Paris n'y figurent que par leur commune parente, pas par
+    leurs arrondissements.
+    """
+    if not stockage.existe(config.CHEMIN_RAW_AAV):
+        reponse = requests.get(config.URL_AAV, timeout=config.DELAI_TELECHARGEMENT_S)
+        reponse.raise_for_status()
+        # Contrôle avant d'écrire : une copie abîmée resterait dans raw/ et existe() ne la
+        # retélécharge plus
+        sha256 = hashlib.sha256(reponse.content).hexdigest()
+        assert sha256 == config.SHA256_AAV, (
+            f"Le zip de l'AAV a le sha256 {sha256}, {config.SHA256_AAV} attendu : "
+            "rien n'a été enregistré."
+        )
+        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_AAV)
+
+    with zipfile.ZipFile(io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_AAV))) as archive:
+        classeur = io.BytesIO(archive.read(config.XLSX_AAV))
+    aav = pd.read_excel(
+        classeur,
+        sheet_name=config.FEUILLE_AAV,
+        header=config.ENTETE_AAV,
+        dtype=str,
+        engine="calamine",
+    )
+
+    assert len(aav) == config.NB_COMMUNES_AAV, (
+        f"{len(aav)} communes dans l'AAV, {config.NB_COMMUNES_AAV} attendues (COG 2025)."
+    )
+    assert aav["CODGEO"].is_unique, "Des codes communes sont en double dans l'AAV."
+    categories_inconnues = set(aav["CATEAAV2020"]) - set(config.CATEGORIES_AAV)
+    assert not categories_inconnues, f"Catégories AAV inconnues : {sorted(categories_inconnues)}"
+    return aav
