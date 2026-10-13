@@ -64,3 +64,19 @@ CATEGORIES_AAV = ("11", "12", "13", "20", "30")
 NATURES_LYCEES = (300, 301, 302, 306)
 # `code_type_contrat_prive` du privé sous contrat : 30 association (toutes classes), 31 (partie)
 CONTRATS_PRIVE_RETENUS = ("30", "31")
+
+# Contours communaux (source 7), via cartiflette. Le COG de référence est celui de 2025
+# (PLAN §2.1) : sans `year`, cartiflette prendrait l'année courante ; sans `simplification=0`, il
+# simplifierait les contours (les centroïdes bougeraient jusqu'à 52 m) ; il ne publie qu'en WGS84
+ANNEE_COG = 2025
+SIMPLIFICATION_CONTOURS = 0
+# Une copie brute par aire d'attraction, pour ne retélécharger que l'aire ajoutée
+CHEMIN_RAW_CONTOURS = "raw/contours_aav_{aav}.parquet"
+# Pôle ou couronne d'après `CATEAAV2020`. Les codes 13 (pôle secondaire, aucun dans les 8 aires
+# candidates) et 30 (hors aire) n'y sont pas : ils feraient échouer `geo.referentiel_communes`
+POLE_COURONNE_AAV = {"11": "pole", "12": "pole", "20": "couronne"}
+# Communes à arrondissements municipaux des aires candidates (Paris et Marseille n'en font pas
+# partie) : Lyon en a 9, de 69381 à 69389. Toute autre commune est une seule unité
+NB_ARRONDISSEMENTS = {"69123": 9}
+# La commune-centre de l'aire (la plus peuplée du pôle, PLAN §2.5)
+CATEGORIE_COMMUNE_CENTRE = "11"

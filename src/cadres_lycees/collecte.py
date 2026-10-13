@@ -7,6 +7,7 @@ import zipfile
 import geopandas as gpd
 import pandas as pd
 import requests
+from cartiflette import carti_download
 
 from cadres_lycees import config, stockage
 
@@ -97,3 +98,22 @@ def aav_2020() -> pd.DataFrame:
     categories_inconnues = set(aav["CATEAAV2020"]) - set(config.CATEGORIES_AAV)
     assert not categories_inconnues, f"Catégories AAV inconnues : {sorted(categories_inconnues)}"
     return aav
+
+
+def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
+    """Renvoie les contours des communes d'une aire d'attraction, en WGS84 (COG 2025).
+
+    Les arrondissements municipaux remplacent leur commune parente (Lyon 69123 devient 69381 à
+    69389) ; `INSEE_COM` garde le code de la commune parente et `INSEE_COG` celui de l'unité.
+    """
+    chemin = config.CHEMIN_RAW_CONTOURS.format(aav=code_aav)
+    if not stockage.existe(chemin):
+        contours = carti_download(
+            values=code_aav,
+            borders="COMMUNE_ARRONDISSEMENT",
+            filter_by="AIRE_ATTRACTION_VILLES",
+            year=config.ANNEE_COG,
+            simplification=config.SIMPLIFICATION_CONTOURS,
+        )
+        stockage.ecrire_parquet(contours, chemin)
+    return stockage.lire_parquet(chemin)
