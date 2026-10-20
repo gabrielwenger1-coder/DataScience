@@ -10,9 +10,28 @@ CRS_CARTES = 4326
 RAYONS_KM = (3, 5, 10)
 RAYON_PRINCIPAL_KM = 5
 
+# Comparaison par anneaux (PLAN §5.2, A6) : bornes basses des anneaux de distance au centre, en km
+# (le dernier va jusqu'à l'infini), effectif minimal de chaque groupe d'une cellule (exposées et
+# non exposées, hérité du plan d'origine) et écart maximal des distances moyennes au centre des
+# deux groupes (20 % de la largeur d'un anneau de 10 km, borne validée le 20/10)
+ANNEAUX_KM = (0, 5, 10, 20, 30)
+EFFECTIF_MIN_GROUPE = 15
+ECART_DIST_MAX_KM = 2
+
 # Sorties de `pipeline.construire_base` (PLAN §4, étape G)
 CHEMIN_BASE = "final/base_communale.parquet"
 CHEMIN_PAIRES = "final/paires.parquet"
+# Tableau de support du choix des aires (§5.2), livrable commité dans le dépôt
+CHEMIN_TABLEAU_SUPPORT = Path(__file__).parents[2] / "docs" / "tableau_support.md"
+# Rayons du tableau de support : le principal et le 10 km rapporté à côté (§5.2)
+RAYONS_SUPPORT_KM = (5, 10)
+# Aires candidates de l'Ouest, dont au moins une doit être retenue (§2.2, critère a)
+AIRES_OUEST = ("Nantes", "Rennes")
+# Aires candidates proches d'une frontière terrestre, où les lycées étrangers manquent, et
+# distance au contour national en deçà de laquelle une commune est comptée (§5.2, A6). Elle ne
+# suit pas `RAYONS_KM` : le plan la fixe à 10 km
+AIRES_FRONTALIERES = ("Lille", "Strasbourg")
+DIST_FRONTIERE_KM = 10
 # Écarts calculés dans les paires de communes contiguës : accès principal et secondaire (§5.3),
 # contrôles (§2.5, A7) et exposition 0/1 pour compter les paires de statut différent (§5.2, A6)
 VARIABLES_PAIRES = (

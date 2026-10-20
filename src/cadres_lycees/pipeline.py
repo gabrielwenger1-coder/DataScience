@@ -3,7 +3,7 @@
 import geopandas as gpd
 import pandas as pd
 
-from cadres_lycees import accessibilite, collecte, config, geo, nettoyage, stockage
+from cadres_lycees import accessibilite, analyse, collecte, config, geo, nettoyage, stockage
 
 
 def construire_base(
@@ -54,3 +54,73 @@ def construire_base(
     stockage.ecrire_parquet(base, config.CHEMIN_BASE)
     stockage.ecrire_parquet(paires, config.CHEMIN_PAIRES)
     return base, lycees, paires
+
+
+def ecrire_tableau_support() -> None:
+    """Écrit le tableau de support des 8 aires candidates dans `config.CHEMIN_TABLEAU_SUPPORT`.
+
+    Valeurs des critères du choix des aires (§2.2) : aire de l'Ouest (a), poids du privé et
+    écart d'IPS (b), population (c), lycées privés (d), support de l'exposition à 5 et 10 km (e)
+    et faisabilité (f) : coût de Lyon (A11) et, pour Lille et Strasbourg, communes à moins de
+    `config.DIST_FRONTIERE_KM` km du contour national (§5.2, A6) ; puis le détail des cellules
+    après fusion. Aucune donnée sur les cadres n'y entre. Le tableau est calculé une fois, avant
+    le choix des aires, et commité. Attention : `construire_base` tourne ici sur les 8 candidates
+    et écrase donc `config.CHEMIN_BASE` et `config.CHEMIN_PAIRES`, à reconstruire ensuite sur
+    les 3 aires retenues.
+    """
+    base, lycees, paires = construire_base(config.AIRES_CANDIDATES)
+    profil = analyse.profil_aires(lycees)
+    criteres = pd.DataFrame(
+        {
+            "ouest": profil.index.isin(config.AIRES_OUEST),
+            "part_prive_lycees": profil["part_prive"].round(3),
+            "part_prive_candidats": profil["part_prive_candidats"].round(3),
+            "ecart_ips": profil["ecart_ips"].round(1),
+            "n_ips_public": profil["n_ips_public"],
+            "n_ips_prive": profil["n_ips_prive"],
+            "population_2022": base.groupby("aire")["pop_2022"].sum(),
+            "lycees": profil["n_lycees"],
+            "lycees_prives": profil["n_prive"],
+        },
+        index=profil.index,
+    )
+    manquantes = criteres.columns[criteres.isna().any()].tolist()
+    assert not manquantes, f"Valeurs manquantes dans les critères : {manquantes}."
+
+    frontaliers = base[base["aire"].isin(config.AIRES_FRONTALIERES)]
+    distance_frontiere = geo.distance_contour_national_km(frontaliers)
+    pres_frontiere = distance_frontiere < config.DIST_FRONTIERE_KM
+    aire_frontaliere = frontaliers.set_index("code_commune")["aire"]
+    frontiere = pres_frontiere.groupby(aire_frontaliere).sum()
+    # Un tiret pour les aires loin d'une frontière : une valeur manquante ferait écrire toute la
+    # colonne en nombres décimaux
+    criteres[f"communes_a_moins_de_{config.DIST_FRONTIERE_KM}km_frontiere"] = [
+        str(frontiere[aire]) if aire in frontiere.index else "—" for aire in criteres.index
+    ]
+
+    cellules = pd.concat(
+        [
+            analyse.cellules_anneaux(base, rayon).assign(rayon_km=rayon)
+            for rayon in config.RAYONS_SUPPORT_KM
+        ]
+    )
+    support = analyse.tableau_support(base, paires, cellules).round(3)
+
+    texte = "\n\n".join(
+        [
+            "# Tableau de support du choix des aires\n\nÉcrit par "
+            "`pipeline.ecrire_tableau_support()` (PLAN §2.2, §5.2), avant le choix des aires et "
+            "sans aucune donnée sur les cadres. Les règles de fusion des anneaux et la borne "
+            "d'équilibre sont celles de l'amendement A6.",
+            "## Critères (a) à (d) et frontière (f)",
+            criteres.to_markdown(),
+            "Critère (f), faisabilité : la part de cadres des arrondissements de Lyon vient du "
+            "même fichier et avec la même définition que celle des autres communes ; le coût de "
+            "Lyon est nul pour la variable à expliquer (amendement A11).",
+            "## Support de l'exposition (critère e), à 5 et 10 km",
+            support.to_markdown(index=False),
+            "## Cellules après fusion des anneaux",
+            cellules.round(2).to_markdown(index=False),
+        ]
+    )
+    config.CHEMIN_TABLEAU_SUPPORT.write_text(texte + "\n", encoding="utf-8")
