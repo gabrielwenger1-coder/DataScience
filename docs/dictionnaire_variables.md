@@ -12,7 +12,7 @@ Communes des aires demandées, au COG 2025, avec les arrondissements municipaux 
 | `code_parent` | Code de la commune parente (69123 pour les arrondissements de Lyon, sinon le même code) | texte | cartiflette (`INSEE_COM`) |
 | `nom_commune` | Nom de la commune ou de l'arrondissement | texte | cartiflette (`NOM`) |
 | `geometry` | Contour de la commune, non simplifié | polygone, EPSG:2154 | cartiflette 0.4.0, ADMIN EXPRESS COG 2025 |
-| `aire` | Nom de l'aire d'attraction des villes (clé de `aires`, par exemple `config.AIRES_CANDIDATES`) ; les communes y sont rattachées par leur code `AAV2020` | texte | Insee, AAV 2020 |
+| `aire` | Nom de l'aire d'attraction des villes (clé de `aires`, par exemple `config.AIRES_RETENUES`) ; les communes y sont rattachées par leur code `AAV2020` | texte | Insee, AAV 2020 |
 | `pole_couronne` | `pole` (commune-centre ou autre commune du pôle) ou `couronne` | texte | Insee, AAV 2020 (`CATEAAV2020`) |
 | `centroide` | Centroïde géométrique du contour, point de référence de la commune (§2.4) | point, EPSG:2154 | `geo.referentiel_communes` |
 | `dist_centre_km` | Distance entre le centroïde et celui de la commune-centre de l'aire (`CATEAAV2020` = 11, Lyon entière) | km | `geo.referentiel_communes` |

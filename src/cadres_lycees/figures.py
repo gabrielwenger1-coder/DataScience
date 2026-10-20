@@ -2,6 +2,7 @@
 
 import html
 import itertools
+from collections.abc import Collection
 
 import folium
 import geopandas as gpd
@@ -14,7 +15,7 @@ from cadres_lycees import config
 
 
 def fig1(
-    profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str, aires_retenues: list[str]
+    profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str, aires_retenues: Collection[str]
 ) -> Figure:
     """Fig. 1 : pour chaque aire, la prévalence du privé sous contrat et la composition sociale.
 
@@ -40,13 +41,18 @@ def fig1(
         ax.grid(axis="x", color=config.COULEUR_GRILLE, linewidth=0.8)
         ax.set_axisbelow(True)
     # Les aires occupent les positions 0, 1, 2... dans l'ordre du profil trié, sur les deux
-    # panneaux. La bande passe sous tout le reste (zorder 0) : tracée après les points, elle les
+    # panneaux. Une demi-hauteur un peu sous 0,5 laisse un liseré blanc entre deux aires retenues
+    # voisines. La bande passe sous tout le reste (zorder 0) : tracée après les points, elle les
     # cacherait
+    demi_hauteur_bande = 0.45
     for position, aire in enumerate(profil.index):
         if aire in aires_retenues:
             for ax in (ax_part, ax_ips):
                 ax.axhspan(
-                    position - 0.45, position + 0.45, color=config.COULEUR_FOND_RETENUES, zorder=0
+                    position - demi_hauteur_bande,
+                    position + demi_hauteur_bande,
+                    color=config.COULEUR_FOND_RETENUES,
+                    zorder=0,
                 )
             ax_part.get_yticklabels()[position].set_fontweight("bold")
 

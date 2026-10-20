@@ -6,11 +6,13 @@ import pandas as pd
 from cadres_lycees import accessibilite, analyse, collecte, config, geo, nettoyage, stockage
 
 
-def lycees_des_aires(referentiel: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def lycees_avec_aire(referentiel: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Renvoie les lycées retenus (§2.4) de France métropolitaine, avec l'aire de leur commune.
 
-    `referentiel` vient de `geo.referentiel_communes`. Sans construire la base, cela suffit à la
-    Fig. 1, qui montre les 8 candidates alors que la base ne porte que sur les aires retenues.
+    `referentiel` vient de `geo.referentiel_communes`. `aire` est manquante pour les lycées hors
+    du référentiel : ils sont gardés, car ils comptent dans l'accès des communes du bord (effet de
+    bord, §2.4). Sans construire la base, cela suffit à la Fig. 1, qui montre les 8 candidates
+    alors que la base ne porte que sur les aires retenues.
     """
     return nettoyage.lycees_geo(
         collecte.annuaire_education(), collecte.ips_lycees(), collecte.ival_lycees(), referentiel
@@ -22,7 +24,7 @@ def construire_base(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]:
     """Construit la base communale, les lycées et les paires de communes contiguës des aires.
 
-    `aires` associe le nom de l'aire à son code AAV2020 (par exemple `config.AIRES_CANDIDATES`).
+    `aires` associe le nom de l'aire à son code AAV2020 (par exemple `config.AIRES_RETENUES`).
     La base a une ligne par commune du référentiel (arrondissements à Lyon) : accès aux lycées
     privés et publics (§2.4), nombre de lycées et IVAL moyenne dans chaque rayon, population,
     densité et exposition 0/1. Les sources sont lues dans leurs copies contrôlées (§7). Écrit
@@ -30,7 +32,7 @@ def construire_base(
     et renvoie (base, lycées, paires).
     """
     referentiel = geo.referentiel_communes(aires)
-    lycees = lycees_des_aires(referentiel)
+    lycees = lycees_avec_aire(referentiel)
     acces_tous_lycees = accessibilite.indicateurs(
         referentiel, lycees, "lyc", attribut="ival", poids="poids_ival"
     )
