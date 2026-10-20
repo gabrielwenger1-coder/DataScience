@@ -22,7 +22,7 @@ uv run pre-commit install        # active nb-clean et ruff avant chaque commit
 uv run pytest                    # lance les tests
 ```
 
-Le rapport est `rapport.ipynb`, publié avec Quarto.
+Le rapport est `rapport.ipynb` (il ne contient pour l'instant que la Fig. 1), qui sera publié avec Quarto.
 
 ### Stockage des données
 
@@ -34,6 +34,6 @@ Les données ne sont pas dans Git. `stockage.py` les lit et les écrit :
 ## Organisation
 
 - `src/cadres_lycees/` : le code du pipeline, un module par étape (voir PLAN §7).
-- `tests/` : les tests des calculs critiques.
-- `notebooks/exploration/` : brouillons individuels, jamais rendus.
-- `docs/` : le plan, les notes sur les sources de données et le dictionnaire des variables.
+- `tests/` : les tests des calculs critiques (à venir avec `accessibilite.py`).
+- `notebooks/exploration/` : brouillons individuels, jamais rendus (à venir).
+- `docs/` : le plan et les notes sur les sources de données ; le dictionnaire des variables viendra avec la base communale.

@@ -80,3 +80,45 @@ POLE_COURONNE_AAV = {"11": "pole", "12": "pole", "20": "couronne"}
 NB_ARRONDISSEMENTS = {"69123": 9}
 # La commune-centre de l'aire (la plus peuplée du pôle, PLAN §2.5)
 CATEGORIE_COMMUNE_CENTRE = "11"
+
+# IPS des lycées (source 5), copie du 13/10/2026 : l'export est identique d'un téléchargement à
+# l'autre, et le sha256 fait échouer le code si la source a changé depuis
+URL_IPS = (
+    "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
+    "fr-en-ips-lycees-ap2023/exports/csv"
+)
+SHA256_IPS = "31b2aafd8fb4597608c55f8f78f7144444a350df795111a651fb5222ee9c8aa7"
+CHEMIN_RAW_IPS = "raw/ips_lycees_20261013.csv"
+NB_LIGNES_IPS = 10905
+# Rentrée et mesure de l'écart d'IPS public/privé (Fig. 1, critère (b) du §2.2) : la rentrée la
+# plus récente, et `ips_voie_gt` pour rester sur la voie générale et technologique
+RENTREE_IPS = "2025-2026"
+COLONNE_IPS = "ips_voie_gt"
+# Types de lycée de l'IPS retenus : les lycées professionnels (LP) sortent du périmètre du §2.4
+TYPES_LYCEES_IPS = ("LEGT", "LPO")
+# Lycées de l'IPS situés dans les communes des 8 aires candidates mais absents de `lycees_geo`
+# (annuaire du 13/10/2026, pour la rentrée et la mesure ci-dessus : en changer impose de revoir
+# cette liste) : trois privés de Saint-Sébastien-sur-Loire fusionnés dans l'annuaire
+# sous l'UAI 0443088T, Averroès (hors contrat dans l'annuaire, sous contrat dans l'IPS), un lycée
+# agricole privé (Genech), un lycée climatique (nature 310) et une section agricole publique
+UAI_IPS_NON_RETENUS = (
+    "0352867B",
+    "0380097Z",
+    "0440256P",
+    "0440279P",
+    "0441653H",
+    "0596281G",
+    "0596681S",
+)
+
+# Secteur de l'annuaire (`statut_public_prive`) -> secteur du projet
+SECTEURS = {"Public": "public", "Privé": "prive"}
+# Secteur de l'IPS (`secteur`) -> secteur du projet
+SECTEURS_IPS = {"public": "public", "privé sous contrat": "prive"}
+# Couleurs des figures, les mêmes partout : bleu et orange pour les secteurs, qui restent
+# distincts en cas de daltonisme ; gris pour le texte et pour relier deux points
+COULEURS_SECTEURS = {"public": "#2a78d6", "prive": "#eb6834"}
+COULEUR_TEXTE = "#52514e"
+COULEUR_LIAISON = "#c3c2b7"
+# Date de l'annuaire de l'éducation affichée dans la source des figures
+DATE_ANNUAIRE = "13/10/2026"

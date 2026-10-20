@@ -1,30 +1,23 @@
 # Exploration des sources de données (13/10/2026)
 
-Notes issues de l'exploration en lecture seule des 8 sources P1 du plan, faite le 13/10/2026 par des agents d'exploration. **Aucune donnée n'a encore été nettoyée et `src/` n'existe pas encore.** Les URL, les noms de colonnes et les chiffres ci-dessous ont été observés ce jour-là : les jeux de l'Éducation nationale changent (l'annuaire est mis à jour chaque jour), donc revérifier avant de s'appuyer sur un chiffre. Les noms de colonnes sont copiés tels quels depuis les fichiers.
+Notes issues de l'exploration en lecture seule des 8 sources P1 du plan, faite le 13/10/2026 par des agents d'exploration. **Le code couvre la collecte (annuaire, AAV, contours, IPS), le référentiel des communes et le nettoyage des lycées (jointure avec l'aire et l'IPS pour la Fig. 1) ; rien d'autre n'est nettoyé.** Les URL, les noms de colonnes et les chiffres ci-dessous ont été observés ce jour-là : les jeux de l'Éducation nationale changent (l'annuaire est mis à jour chaque jour), donc revérifier avant de s'appuyer sur un chiffre. Les noms de colonnes sont copiés tels quels depuis les fichiers.
 
 Pour la suite : `CLAUDE.md` demande de lire la section d'une source avant tout ticket qui la touche, et de la corriger si la réalité diffère.
 
 ## 1. Où en est le projet
 
-- **Fait** : le harness Claude Code (`.claude/`, `CLAUDE.md`, `ruff.toml`), cette exploration, et la vérification que les dépendances du plan se résolvent ensemble sous Python 3.13.
-- **Pas fait** : aucun ticket. Ni `pyproject.toml`, ni `src/`, ni test.
-- **Ordre proposé** :
-  1. T0, puis T1 (`stockage.py`).
-  2. T2 (annuaire), qui n'est bloqué par rien.
-  3. Les entrées de la Fig. 1 : zonage AAV et IPS.
-  4. Le choix des 3 aires par les étudiants (jalon S1, avant le 18/10).
-  5. T3 et T5 ensuite, pour ne pas régler la question de Lyon avant de savoir si l'aire est retenue.
-- **Branche de T0** : le harness n'est pas encore sur `main`, donc créer `feat/squelette` depuis `chore/harness-claude`, ou fusionner la PR du harness d'abord.
-- **T0 en 5 lignes (à faire valider)** :
-  1. Branche `feat/squelette`.
-  2. `pyproject.toml` en Python 3.13 : dépendances du §8.2 sans `pynsee`, plus `python-calamine` et `cartiflette==0.4.0` ; outils de développement pytest, ruff, nb-clean, pre-commit.
-  3. Arborescence du §7 : `src/cadres_lycees/` avec `config.py` minimal (URL confirmées ci-dessous, CRS, rayons), `tests/`, `notebooks/exploration/`.
-  4. `.gitignore` complété (`.venv/`, `_site/`, `.ipynb_checkpoints`…), `.pre-commit-config.yaml` avec nb-clean, README squelette. Aucune logique métier.
-  5. Fait quand : `uv sync` fonctionne et `import cadres_lycees` ne plante pas.
+- **Fait** (branches empilées `chore/harness-claude` → `feat/squelette` → `feat/collecte-annuaire` → `feat/collecte-aav` → `feat/geo-referentiel` → `feat/fig1-ips`, rien n'est encore fusionné dans `main`) :
+  - le harness Claude Code (`.claude/`, `CLAUDE.md`, `ruff.toml`) et cette exploration ;
+  - T0, le squelette du dépôt (`c09b613`), T1, `stockage.py` (`9e9a41d`), et T2, `collecte.annuaire_education` (`ffdeab0`) ;
+  - le journal §13 (`45bc8c8`), puis le point de pilotage du 13/10 : amendements A1 à A4 écrits dans le plan et tableau de bord dans `.claude/pilotage.md` ;
+  - T3 : `collecte.aav_2020` (`0a4e332`) et `geo.referentiel_communes` avec `collecte.contours_aire` (`df2ca4a`) ;
+  - T6 : `collecte.ips_lycees`, `nettoyage.lycees_geo`, `analyse.profil_aires`, `figures.fig1` et `rapport.ipynb` (Fig. 1 seule).
+- **Pas fait** : T4 (`accessibilite.py`), `geo.paires_contigues`, le tableau de support, T5 (cadres), l'IVAL, les copies gelées de l'annuaire et de l'IVAL (amendement A2). Aucun test dans `tests/` pour l'instant. L'ordre des tickets est celui du §12.2 du plan, qui fait foi : cette page ne le répète pas.
+- **S3** : l'aller-retour `existe`, `ecrire_octets`, `lire_parquet` et `ecrire_parquet` a été testé le 13/10 sur le bucket personnel d'un membre, avec la copie brute de l'annuaire dans `raw/` relue identique. Piège : le listage des buckets (`list_buckets`, donc `s3fs.ls("")`) ne répond jamais avec ces identifiants, alors que les requêtes sur un bucket précis répondent en moins d'une seconde. Ne pas s'en servir pour retrouver le nom du bucket.
 
 ### Corrections factuelles au plan (une ligne chacune au journal §13)
 
-Ce ne sont pas des changements de choix fixés avant les résultats. À faire appliquer par le pilote, avec validation de l'étudiant (le plan n'est modifiable que par lui).
+Ce ne sont pas des changements de choix fixés avant les résultats. Appliquées au journal §13 le 13/10/2026 (le plan n'est modifiable que par le pilote, avec validation de l'étudiant).
 
 | Constat | Ligne de journal proposée |
 |---|---|
@@ -38,12 +31,12 @@ Ce ne sont pas des changements de choix fixés avant les résultats. À faire ap
 
 | Décision | Défaut recommandé | Quand |
 |---|---|---|
-| Filtre des lycées | Celui du plan, tel que défini au §3 ci-dessous. Les variantes (sections rattachées à un LP, lycées militaires, agricoles par drapeau) vont en robustesse. | T2 |
-| IPS par aire (Fig. 1) | Moyenne simple des lycées de l'aire, car il n'y a pas d'effectifs. Colonne `ips_voie_gt` pour rester sur le périmètre général et technologique. | Fig. 1 |
-| Choix des 3 aires | Aux étudiants. Les données de la Fig. 1 sont prêtes : §7 (communes par aire), §3 (lycées), §4 (IPS). | avant le 18/10 |
-| Lyon : arrondissements | Seulement si Lyon est retenue. Les arrondissements viennent alors des tableaux ACT5 (§9), ce qui change légèrement le dénominateur. | après le choix des aires |
+| Filtre des lycées | Décidé et codé à T2 : filtre pandas par `code_nature`, tel que défini au §3 ci-dessous. Les variantes (sections rattachées à un LP, lycées militaires, agricoles par drapeau) vont en robustesse. | fait |
+| IPS par aire (Fig. 1) | Moyenne simple des lycées de l'aire, car il n'y a pas d'effectifs. Colonne `ips_voie_gt` pour rester sur le périmètre général et technologique. | fait à T6 avec ce défaut et la rentrée 2025-2026 (`config.py`), à valider par le groupe |
+| Choix des 3 aires | Aux étudiants, sur les critères (a) à (f) du §2.2 du plan. Entrées : §7 (communes par aire), §3 (lycées), §4 (IPS) ; la population de l'aire (critère c) vient de `P22_POP` (§10). | avant le 18/10 |
+| Lyon : arrondissements | Mesurer le coût réel avant toute exclusion (critère (f) du §2.2 du plan). Les arrondissements viennent des tableaux ACT5 (§9), ce qui change légèrement le dénominateur. | avant le choix des aires |
 | Dénominateur de la variable à expliquer | Fichier série tel quel (occupés + chômeurs ayant déjà travaillé). ACT5 (occupés seulement) si Lyon est retenue avec ses arrondissements. | T5 |
-| Fiabilité de l'IVAL pour H3 | À examiner dans `/pilotage`. La valeur ajoutée d'un lycée est peu stable dans le temps (§5). | après T0 |
+| Fiabilité de l'IVAL pour H3 | Décidé le 13/10 (amendement A1) : moyenne 2012-2022 avec au moins 5 sessions, H3 « non testable » si la fiabilité est sous 0,5. Voir §5 et le journal §13. | fait |
 | Scissions de communes, petites communes, communes à population nulle | À traiter à T5 avec des `assert` explicites. | T5 |
 
 ## 2. Pièges qui traversent plusieurs sources
@@ -62,7 +55,7 @@ Ce ne sont pas des changements de choix fixés avant les résultats. À faire ap
 | cartiflette `COMMUNE_ARRONDISSEMENT` | `INSEE_COM` = parent, `INSEE_COG` = arrondissement | idem | idem |
 | Annuaire, IPS, IVAL | arrondissements 693xx (le parent n'apparaît pas) | 132xx (annuaire : une ligne en 13055, non retenue) | 751xx |
 
-  **Piège Fig. 1** : l'annuaire place les lycées de Lyon en 693xx alors que l'AAV n'a que 69123. Rattacher chaque arrondissement à son parent avant la jointure, sinon une quarantaine de lycées disparaissent sans erreur.
+  **Piège Fig. 1** : l'annuaire place les lycées de Lyon en 693xx alors que l'AAV n'a que 69123. `geo.referentiel_communes` est au grain arrondissement (693xx, avec `code_parent` = 69123) : joindre les lycées sur son `code_commune`, sans rattacher les arrondissements à leur parent, sinon le code 69123, absent de l'annuaire, ne correspond à aucun lycée et les 43 lycées de Lyon disparaissent sans erreur. Si le plan passe Lyon au grain commune (proposition A5 du pilote), c'est l'inverse : il faudra rattacher 693xx à 69123.
 - **Moyennes** : une part de cadres ne se moyenne pas. Après une fusion de communes, sommer numérateur et dénominateur.
 - **Ne jamais joindre sur un libellé** (`nom_commune`, `LIBGEO`, `libelle_commune`) : libellés tronqués, accents remplacés par `?` dans l'IVAL, noms qui diffèrent selon l'année, un même libellé pour deux codes (« Valence » = `049` et `396`).
 - **Dépendances** : `uv add python-calamine` ; `pandas` 3.x se résout sans `pynsee` ; installer `cartiflette==0.4.0` depuis PyPI.
@@ -134,6 +127,10 @@ Ce ne sont pas des changements de choix fixés avant les résultats. À faire ap
 - **Ce qui manque à la source** : pas de coordonnées, pas d'effectifs, pas de privé hors contrat. Le §5.6 du plan (robustesse hors contrat) ne pourra pas utiliser l'IPS.
 - **Jointure** : sur `uai`, sans doublon par rentrée. Mais 24 UAI changent de `type_de_lycee` entre rentrées (filtrer par rentrée), 8 changent de commune, 525 changent de nom. Ne garder de cette source que `uai`, `secteur`, `type_de_lycee` et l'IPS ; la géographie vient de l'annuaire.
 - **Écart public/privé** (rentrée 2025-2026, métropole, moyennes simples non pondérées de `ips_etab`) : LEGT privé 130,3 contre public 114,9 (+15,4) ; LPO 116,0 contre 102,3 (+13,7) ; LP +17,4. LEGT et LPO regroupés : 126,9 contre 109,1 (+17,8). Écart stable sur les 3 rentrées.
+- **Vérifié à T6 (13/10)** :
+  - deux téléchargements de l'export à 20 s d'écart sont identiques octet pour octet (3 627 001 octets, sha256 `31b2aafd8fb4597608c55f8f78f7144444a350df795111a651fb5222ee9c8aa7`, dans `config.SHA256_IPS`) ; `collecte.ips_lycees` échoue si la source change ;
+  - lycées LEGT et LPO, France : `ips_voie_gt` renseigné à 96-97 % selon la rentrée, `ips_etab` à 100 % ; écart privé − public (moyennes simples) de 17,4, 17,8 et 18,2 points pour `ips_voie_gt` en 2023-2024, 2024-2025 et 2025-2026 (17,8, 18,2 et 18,5 pour `ips_etab`) ;
+  - dans les communes des 8 aires candidates (rentrée 2025-2026, `ips_voie_gt`) : 339 lycées dont 9 sans IPS ; l'écart privé − public d'une même aire varie de 5,3 points au plus selon la mesure et la rentrée, un peu plus que le seuil de 3 points de la DEPP ; recalculé depuis le seul fichier IPS (commune de l'IPS), la moyenne d'une aire change de 0,6 point au plus (Nantes, privé : 135,7 contre 135,1), cause non vérifiée ;
 - **Mises en garde de la DEPP** : ne pas sur-interpréter des différences de 3 points ou moins ; la remontée de la 2e PCS a augmenté dans le privé sous contrat à la rentrée 2023 (environ +3 points d'IPS).
 - **Données 2025-2026** : ajoutent des COM et la Nouvelle-Calédonie ; un filtre « métropole » = longueur du code département ≤ 2. Le code `99130` (Andorre-la-Vieille) est étranger.
 
@@ -150,6 +147,11 @@ Ce ne sont pas des changements de choix fixés avant les résultats. À faire ap
 - **Manquants** : `va_acces_2nde` manquant sur 580 lignes (1,8 %), dont 58 lycées sans aucune valeur. **Rupture en 2024** : le seuil de présents passe de 20 à 40, donc 4,8 % de manquants en 2024 et 6,0 % en 2025, dont 91 des 140 de 2025 dans le privé sous contrat.
 - **Comparabilité dans le temps** : `taux_acces_2nde` n'est pas comparable d'une session à l'autre (moyenne 68,2 en 2012, 76,4 en 2017, 87,9 en 2020, 85,1 en 2025), à cause de changements de définition en 2016 et 2017.
 - **Stabilité de `va_acces_2nde`** (corrélation d'un lycée entre deux sessions) : 0,56 à 1 an, 0,43 à 3 ans, 0,32 à 5 ans, 0,18 à 10 ans, 0,12 entre 2012 et 2025 (ICC(1) = 0,34). **Risque pour H3**, qui relie l'IVAL récent à l'évolution des cadres 2011-2022 ; moyenner plusieurs sessions atténue le bruit. Le plan (§3.2) prévoyait ce risque.
+- **Contrôles du 13/10 pour l'amendement A1, sans aucune donnée sur les cadres** (recalculés sur l'export complet) :
+  - corrélation entre les moyennes par lycée de 2012-2017 et de 2018-2022 : 0,49 à 0,50 (n = 2 232 à 2 302 selon qu'on exige une ou plusieurs sessions par période), soit 0,65 à 0,66 pour la moyenne complète après correction de Spearman-Brown. La règle d'inclusion est à figer au ticket ;
+  - pas de rupture de `va_acces_2nde` entre 2016 et 2017 (corrélation 0,595), alors que `taux_acces_2nde` change de définition ;
+  - 205 des 2 515 lycées de la fenêtre 2012-2022 ont moins de 5 sessions valides ;
+  - `va_acces_2nde` manquant : 0,5 % (privé sous contrat) et 0,6 % (public) en 2023, 9,1 % et 2,6 % en 2024, 11,6 % et 3,1 % en 2025.
 - **Ancienne version** (data.gouv `5889d042a3a72974c1f0d607`) : valeurs identiques à la v2 sur les 27 808 lignes communes, donc pas de millésime indépendant pour tester la stabilité ; la v2 contient déjà 14 sessions.
 - **Jointure avec l'annuaire** : 94,3 % des 2 457 lycées GT de l'annuaire sont dans l'IVAL 2025 ; 6 UAI IVAL 2025 n'existent pas comme lycée dans l'annuaire. **Trois privés de Saint-Sébastien-sur-Loire** (`0440256P`, `0440279P`, `0441653H`, aire de Nantes) sont fusionnés dans l'annuaire sous l'UAI `0443088T` (multi-sites) : une jointure naïve les perd. 16 UAI changent de `code_commune` selon la session.
 - **Non lus** : les guides méthodologiques 2016, 2020 et 2023 (seul celui de 2025 l'a été, partiellement).

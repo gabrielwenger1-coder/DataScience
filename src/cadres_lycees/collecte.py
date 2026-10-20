@@ -117,3 +117,31 @@ def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
         )
         stockage.ecrire_parquet(contours, chemin)
     return stockage.lire_parquet(chemin)
+
+
+def ips_lycees() -> pd.DataFrame:
+    """Renvoie l'IPS des lycées : une ligne par lycée et par rentrée, de 2023-2024 à 2025-2026.
+
+    Copie du 13/10/2026 : comme pour l'AAV, le sha256 est contrôlé avant l'écriture dans raw/, et
+    le code échoue si la source a changé depuis au lieu de lire des données différentes.
+    Tout est lu en chaîne, la conversion en nombres se fait au nettoyage.
+    """
+    if not stockage.existe(config.CHEMIN_RAW_IPS):
+        reponse = requests.get(config.URL_IPS, timeout=config.DELAI_TELECHARGEMENT_S)
+        reponse.raise_for_status()
+        sha256 = hashlib.sha256(reponse.content).hexdigest()
+        assert sha256 == config.SHA256_IPS, (
+            f"L'export de l'IPS a le sha256 {sha256}, {config.SHA256_IPS} attendu : la source a "
+            "changé depuis le 13/10/2026, rien n'a été enregistré."
+        )
+        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_IPS)
+
+    csv = io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_IPS))
+    # Séparateur ";" et BOM UTF-8 en tête du fichier
+    ips = pd.read_csv(csv, sep=";", encoding="utf-8-sig", dtype=str)
+
+    assert len(ips) == config.NB_LIGNES_IPS, (
+        f"{len(ips)} lignes dans l'IPS, {config.NB_LIGNES_IPS} attendues."
+    )
+    assert not ips.duplicated(["uai", "rentree_scolaire"]).any(), "Lycée en double dans l'IPS."
+    return ips
