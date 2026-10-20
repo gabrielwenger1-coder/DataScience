@@ -2,7 +2,7 @@
 
 Tenu par l'agent pilote à chaque /pilotage. Les décisions elles-mêmes vont dans le journal de docs/PLAN.md (§13).
 
-Dernier point de pilotage : 2026-10-13
+Dernier point de pilotage : 2026-10-20
 
 ## Note prévisionnelle du correcteur
 
@@ -10,25 +10,25 @@ Dernier point de pilotage : 2026-10-13
 |------|-----------|---------------|----------------------|---------|---------------|-----------|
 | 13/10 état actuel | 0,5 | 0 | 1,5 | 0,6 | 1,2 | environ 4 (pas de notebook, donc pas de moyenne) |
 | 13/10 plan exécuté avec A1 à A4 | 3,4 | 3,0 | 4,2 (3,2 si Git reste à un seul auteur) | 1,5 | 3,3 | environ 15,4 (fourchette 13,5 à 16,5) |
+| 20/10 état actuel | 2,0 | 0,5 | 1,0 | 1,4 | 1,5 | environ 6,4, sans moyenne (le notebook plante sur un compte neuf : annuaire non gelé) |
+| 20/10 plan exécuté avec A5 à A7 | 3,5 | 3,0 | 4,2 (3,0 si Git reste à un seul auteur) | 1,6 | 3,3 (2,3 si deux membres n'ont pas écrit de code) | environ 15,6 (fourchette 12,5 à 16,5 ; 15,0 sans A5 à A7) |
 
 ## Actions prioritaires
 
-Suivi : aucun point de pilotage précédent. Amendements A1 à A4 appliqués au plan le 13/10 (journal §13).
+Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusionné) ; repli local fait, `curl` anonyme et test sur un autre compte non faits ; Fig. 1 et squelette faits, ni tableau de support, ni choix des aires, ni tag. A5 à A7 appliqués le 20/10 (journal §13).
 
-1. Git actif à trois : pousser les branches, PR relues par un autre membre, premier commit de chacun des deux autres, aucune réécriture d'historique. Avant de fusionner le harness sur `main` : décider du sort de `CLAUDE.md` et ajouter au README une section « Usage de l'IA générative ».
-2. Test `curl` anonyme de la lecture publique du S3, puis repli local quand `BUCKET_S3` manque, puis test du README sur le compte d'un autre membre. Tant que le `curl` n'a pas réussi, le §7 (lecture publique) reste conditionnel.
-3. Jalon du 18/10 : tableau de support (8 candidates) commité, Fig. 1, choix des 3 aires journalisé dans une PR fusionnée avant tout T5, tag annoté `plan-fige` posé après la fusion, note de cadrage rédigée par le groupe. Si le calendrier glisse : squelette du notebook d'abord, PR et choix des aires jusqu'au 20/10.
+1. Aujourd'hui : geler l'annuaire du 13/10, l'IPS, l'IVAL et les contours (nom daté, `sha256` dans `config.py`, plus d'appel direct à l'API dans le chemin du rapport), les publier (`curl` anonyme, sinon release GitHub), rejouer le compte neuf.
+2. D'ici au 22/10, Git à trois : branches poussées, PR vers `main` dans l'ordre, relues par un autre membre. PR de R2 (fusion, tableau de support, `tests/test_analyse.py`) ; PR de R3 (section IA du README), livrable daté du 22/10 suivi ici. Si R2 n'a pas ouvert sa PR le 22/10 : Giulio écrit la fusion, R2 la relit avec des commentaires visibles.
+3. Choix des aires le 22/10 (tableau calculé une seule fois, coût de Lyon mesuré, PR, tag au plus tard le 24/10), listes d'UAI régénérées pour 3 aires, fiabilité de l'IVAL journalisée, estimateur et verdict de H3 fixés en `/pilotage` ; T5 du 23 au 25/10.
 
 ## Points ouverts
 
-- Le notebook reconstruit-il depuis le brut gelé ou lit-il `final/` ? Non décidé, non écrit au plan.
-- Prénoms des trois membres à inscrire au §9 (seul « Giulio » est connu).
-- Borne d'équilibre de distance au centre du §5.2 (2 km proposée, marquée « à valider » au plan) : à valider avant `plan-fige`.
-- Lot hors quota de mise en cohérence du texte (`pynsee` §3.1 et §8.2, cartiflette §12.2 T0, arborescence §7, `docs/exploration_sources.md` §1 périmé) : non décidé, non appliqué.
-- Décision sur `CLAUDE.md` et la section IA du README.
-- Jeton GitHub visible dans le reflog : révocation conseillée à l'étudiant.
-- Énoncé de H1 (§1.2, colonnes « Mesure » et « Test principal ») et §0 : non modifiés, à relire à la lumière de A4.
+- Révision d'ensemble A8 à A10 proposée le 20/10 : en attente du correcteur et de l'étudiant.
+- Estimateur et verdict de H3 (« anneau par anneau » impossible : 29 communes à Rennes et 31 à Nantes ont un lycée à 5 km).
+- Fig. 1 : part du privé comparable dans l'Ouest, à Lyon et à Lille ; seul l'écart d'IPS distingue l'Ouest. H2 et le critère (b) se défendent par la sélectivité.
+- Mise en forme Quarto encore cassée hors des sections touchées (§0, §2.2, §6, §10, §12.1, §12.2) ; `pynsee` au §8.2 ; « proposition A5 » de `docs/exploration_sources.md` §2 à renommer.
+- Notebook depuis le brut gelé ou depuis `final/` ; prénoms des membres au §9 ; sort de `CLAUDE.md` ; jeton GitHub du reflog à révoquer.
 
 ## Désaccords ouverts entre pilote et correcteur
 
-Aucun. Le remède au support de H1 (paires avec `d_dist_lyc_prive_min` en principal, 10 km à côté du 5 km) a été tranché par l'étudiant dans le sens du correcteur le 13/10.
+Aucun. Réglés le 20/10 : §4 réduit aux signatures fausses (A5 c) ; T5 n'attend que le tag, la PR de R3 restant datée et suivie (A5 d). Condition du haut de fourchette selon le correcteur : PR relues et commits réels des deux autres membres d'ici au 22/10, puis exécution complète par un autre membre sur son compte, sans `BUCKET_S3`, depuis les copies gelées publiques, avant le 8/11.
