@@ -16,16 +16,15 @@ Dernier point de pilotage : 2026-10-20
 
 ## Actions prioritaires
 
-Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusionné) ; repli local fait, `curl` anonyme et test sur un autre compte non faits ; Fig. 1 et squelette faits, ni tableau de support, ni choix des aires, ni tag. A5 à A7 appliqués le 20/10 (journal §13). A8 rejeté par l'étudiant le 20/10 : la variable à expliquer reste celle des séries historiques, la question ACT5 pour Lyon reste ouverte au critère (f). A9 et A10 appliqués le 20/10, avec la mise en forme seule du §0, du §2.2 et du §12.1.
+Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusionné) ; repli local fait, `curl` anonyme et test sur un autre compte non faits ; Fig. 1 et squelette faits, ni tableau de support, ni choix des aires, ni tag. A5 à A7 appliqués le 20/10 (journal §13). A8 rejeté par l'étudiant le 20/10. A9 et A10 appliqués le 20/10, avec la mise en forme seule du §0, du §2.2 et du §12.1. A11 appliqué le 20/10 : part de cadres tirée de « Évolution et structure » (même définition et mêmes valeurs que les séries historiques, arrondissements de Lyon natifs, COG 2025) ; critère (f) mesuré, coût de Lyon nul pour la variable à expliquer.
 
 1. Aujourd'hui : geler l'annuaire du 13/10, l'IPS, l'IVAL et les contours (nom daté, `sha256` dans `config.py`, plus d'appel direct à l'API dans le chemin du rapport), les publier (`curl` anonyme, sinon release GitHub), rejouer le compte neuf.
 2. D'ici au 22/10, Git à trois : branches poussées, PR vers `main` dans l'ordre, relues par un autre membre. PR de R2 (fusion, tableau de support, `tests/test_analyse.py`) ; PR de R3 (section IA du README), livrable daté du 22/10 suivi ici. Si R2 n'a pas ouvert sa PR le 22/10 : Giulio écrit la fusion, R2 la relit avec des commentaires visibles.
-3. Choix des aires le 22/10 (tableau calculé une seule fois, coût de Lyon mesuré, PR, tag au plus tard le 24/10), listes d'UAI régénérées pour 3 aires, fiabilité de l'IVAL journalisée, estimateur et verdict de H3 fixés en `/pilotage` ; T5 du 23 au 25/10.
+3. Choix des aires le 22/10 (tableau calculé une seule fois, coût de Lyon nul selon A11, PR, tag au plus tard le 24/10), listes d'UAI régénérées pour 3 aires, fiabilité de l'IVAL journalisée, estimateur et verdict de H3 fixés en `/pilotage` ; T5 du 23 au 25/10.
 
 ## Points ouverts
 
 - A9 et A10 dans le code : `plotly` et `duckdb` retirés de `pyproject.toml`, `stockage.copie_controlee`, `lycees_geo` découpée, `pipeline.construire_base(aires)`, titres en argument obligatoire, README.
-- Lyon : chemin ACT5 et dénominateur à mesurer avant le choix des aires (critère f), A8 ayant été rejeté.
 - Estimateur et verdict de H3 (« anneau par anneau » impossible : 29 communes à Rennes et 31 à Nantes ont un lycée à 5 km).
 - Fig. 1 : part du privé comparable dans l'Ouest, à Lyon et à Lille ; seul l'écart d'IPS distingue l'Ouest. H2 et le critère (b) se défendent par la sélectivité.
 - Mise en forme Quarto encore cassée au §10 et au §12.2 ; « proposition A5 » de `docs/exploration_sources.md` §2 à renommer.
