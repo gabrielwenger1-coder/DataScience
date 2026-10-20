@@ -247,6 +247,8 @@ COULEUR_TEXTE = "#52514e"
 COULEUR_LIAISON = "#c3c2b7"
 # Grille des axes, très claire pour rester en arrière-plan
 COULEUR_GRILLE = "#ececea"
+# Bande de fond qui met en avant les aires retenues parmi les candidates (Fig. 1, PLAN §5.1)
+COULEUR_FOND_RETENUES = "#f0efec"
 # Date de l'annuaire de l'éducation affichée dans la source des figures
 DATE_ANNUAIRE = "13/10/2026"
 # Secteurs écrits en toutes lettres dans les légendes et les infobulles

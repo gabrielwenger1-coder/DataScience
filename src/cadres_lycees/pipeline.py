@@ -6,6 +6,17 @@ import pandas as pd
 from cadres_lycees import accessibilite, analyse, collecte, config, geo, nettoyage, stockage
 
 
+def lycees_des_aires(referentiel: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Renvoie les lycées retenus (§2.4) de France métropolitaine, avec l'aire de leur commune.
+
+    `referentiel` vient de `geo.referentiel_communes`. Sans construire la base, cela suffit à la
+    Fig. 1, qui montre les 8 candidates alors que la base ne porte que sur les aires retenues.
+    """
+    return nettoyage.lycees_geo(
+        collecte.annuaire_education(), collecte.ips_lycees(), collecte.ival_lycees(), referentiel
+    )
+
+
 def construire_base(
     aires: dict[str, str],
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]:
@@ -19,9 +30,7 @@ def construire_base(
     et renvoie (base, lycées, paires).
     """
     referentiel = geo.referentiel_communes(aires)
-    lycees = nettoyage.lycees_geo(
-        collecte.annuaire_education(), collecte.ips_lycees(), collecte.ival_lycees(), referentiel
-    )
+    lycees = lycees_des_aires(referentiel)
     acces_tous_lycees = accessibilite.indicateurs(
         referentiel, lycees, "lyc", attribut="ival", poids="poids_ival"
     )

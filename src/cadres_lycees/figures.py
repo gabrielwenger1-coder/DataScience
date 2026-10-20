@@ -13,7 +13,9 @@ from matplotlib.lines import Line2D
 from cadres_lycees import config
 
 
-def fig1(profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str) -> Figure:
+def fig1(
+    profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str, aires_retenues: list[str]
+) -> Figure:
     """Fig. 1 : pour chaque aire, la prévalence du privé sous contrat et la composition sociale.
 
     À gauche, la part du privé en nombre de lycées et en candidats au bac ; à droite, l'IPS de
@@ -21,8 +23,10 @@ def fig1(profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str) -> Figure:
     les deux dimensions du critère (b) du choix des aires (PLAN §2.2, §5.1). `profil` vient de
     `analyse.profil_aires`, `lycees` de `nettoyage.lycees_geo` ; `titre` est le message de la
     figure, écrit par le groupe (PLAN §6). Les aires sont triées par écart d'IPS, le plus fort
-    en haut.
+    en haut ; celles de `aires_retenues` sont mises en avant, nom en gras sur une bande grise.
     """
+    inconnues = sorted(set(aires_retenues) - set(profil.index))
+    assert not inconnues, f"Aires retenues absentes du profil : {inconnues}."
     profil = profil.sort_values("ecart_ips")
     texte = config.COULEUR_TEXTE
     fig, (ax_part, ax_ips) = plt.subplots(
@@ -35,6 +39,16 @@ def fig1(profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str) -> Figure:
         ax.tick_params(colors=texte)
         ax.grid(axis="x", color=config.COULEUR_GRILLE, linewidth=0.8)
         ax.set_axisbelow(True)
+    # Les aires occupent les positions 0, 1, 2... dans l'ordre du profil trié, sur les deux
+    # panneaux. La bande passe sous tout le reste (zorder 0) : tracée après les points, elle les
+    # cacherait
+    for position, aire in enumerate(profil.index):
+        if aire in aires_retenues:
+            for ax in (ax_part, ax_ips):
+                ax.axhspan(
+                    position - 0.45, position + 0.45, color=config.COULEUR_FOND_RETENUES, zorder=0
+                )
+            ax_part.get_yticklabels()[position].set_fontweight("bold")
 
     fig.suptitle(titre, fontsize=13, x=0.01, ha="left")
     n_lycees = profil["n_lycees"].sum()
@@ -48,8 +62,9 @@ def fig1(profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str) -> Figure:
         f"2012-2022,\npour les {profil['n_avec_candidats'].sum()} lycées sur {n_lycees} qui ont "
         "une IVAL (ce n'est pas une part d'élèves au sens de la DEPP). IPS : voie générale et "
         f"technologique, rentrée {config.RENTREE_IPS}, moyenne simple des lycées, "
-        f"{n_sans_ips} lycées sans IPS.\nSources : annuaire de l'éducation, DEPP (IPS, IVAL), "
-        "Insee (aires d'attraction des villes 2020), IGN.",
+        f"{n_sans_ips} lycées sans IPS. En gras sur fond gris : les aires retenues.\n"
+        "Sources : annuaire de l'éducation, DEPP (IPS, IVAL), Insee (aires d'attraction des "
+        "villes 2020), IGN.",
         fontsize=8,
         color=texte,
     )
