@@ -55,6 +55,20 @@ NB_COMMUNES_AAV = 34875
 # attraction des villes. Un code inconnu fait échouer la lecture
 CATEGORIES_AAV = ("11", "12", "13", "20", "30")
 
+# Série historique du recensement 2022 : population et superficie (km²) en COG 2025,
+# arrondissements municipaux et communes parentes ensemble. Elle remplace la source 2 du plan
+# (« Évolution et structure », §3.1) pour la population et la superficie, que ce fichier-là n'a
+# pas ; P22_POP y est identique dans les 8 aires. Le zip de l'Insee est permanent : on contrôle
+# son sha256 au téléchargement (observé le 20/10)
+URL_SERIE_RP2022 = (
+    "https://www.insee.fr/fr/statistiques/fichier/8582555/base-cc-serie-historique-2022_csv.zip"
+)
+SHA256_SERIE_RP2022 = "ff0187ec6bb77fd2e5da639c08159368ff152cad0682ee0908358a829830c273"
+CHEMIN_RAW_SERIE_RP2022 = "raw/base-cc-serie-historique-2022_csv.zip"
+CSV_SERIE_RP2022 = "base-cc-serie-historique-2022.CSV"
+# Communes et arrondissements du COG 2025, Mayotte exceptée
+NB_LIGNES_SERIE_RP2022 = 34903
+
 # Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
 # restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,
 # 302 général, 306 polyvalent

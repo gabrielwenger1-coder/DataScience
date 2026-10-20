@@ -1,4 +1,4 @@
-"""Nettoyage et jointures des sources : les lycées avec leur aire et leur IPS."""
+"""Nettoyage et jointures des sources : lycées avec leur aire et leur IPS, population."""
 
 import geopandas as gpd
 import pandas as pd
@@ -83,3 +83,27 @@ def lycees_geo(
     uai_differents = lycees.loc[secteur_different, "uai"].tolist()
     assert not uai_differents, f"Secteur différent dans l'annuaire et l'IPS : {uai_differents}."
     return lycees.drop(columns="secteur_ips")
+
+
+def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFrame:
+    """Renvoie la population 2022 et la densité des communes du référentiel, par `code_commune`.
+
+    `serie` vient de `collecte.serie_historique_rp2022`. `densite` est en habitants par km², avec
+    `SUPERF`, la superficie de l'Insee, et non la surface des contours : même source que la
+    population (choix de l'étudiant du 20/10). Les communes sont celles du référentiel, au grain
+    des arrondissements à Lyon : la commune parente 69123 n'est jamais lue, ce qui évite de
+    compter Lyon deux fois. Le résultat se joint par `code_commune`, pas par position.
+    """
+    serie = serie.set_index("CODGEO")
+    manquantes = sorted(set(referentiel["code_commune"]) - set(serie.index))
+    assert not manquantes, f"Communes absentes de la série historique : {manquantes}"
+    pop_superficie = serie.loc[referentiel["code_commune"]]
+    assert pop_superficie.notna().all().all(), "Population ou superficie manquante."
+    assert (pop_superficie["SUPERF"] > 0).all(), "Superficie nulle ou négative."
+
+    return pd.DataFrame(
+        {
+            "pop_2022": pop_superficie["P22_POP"],
+            "densite": pop_superficie["P22_POP"] / pop_superficie["SUPERF"],
+        }
+    ).rename_axis("code_commune")

@@ -102,6 +102,40 @@ def aav_2020() -> pd.DataFrame:
     return aav
 
 
+def serie_historique_rp2022() -> pd.DataFrame:
+    """Renvoie la population et la superficie du recensement 2022, par commune ou arrondissement.
+
+    Colonnes `CODGEO`, `P22_POP` et `SUPERF` (km²), en COG 2025. Les arrondissements de Lyon,
+    Marseille et Paris y figurent avec leur commune parente : sommer tout le fichier compterait
+    ces villes deux fois.
+    """
+    if not stockage.existe(config.CHEMIN_RAW_SERIE_RP2022):
+        reponse = requests.get(config.URL_SERIE_RP2022, timeout=config.DELAI_TELECHARGEMENT_S)
+        reponse.raise_for_status()
+        # Contrôle avant d'écrire : un téléchargement tronqué sans erreur a déjà été vu sur un zip
+        # de l'Insee, et existe() ne le retéléchargerait plus
+        sha256 = hashlib.sha256(reponse.content).hexdigest()
+        assert sha256 == config.SHA256_SERIE_RP2022, (
+            f"Le zip de la série historique a le sha256 {sha256}, "
+            f"{config.SHA256_SERIE_RP2022} attendu : rien n'a été enregistré."
+        )
+        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_SERIE_RP2022)
+
+    contenu = stockage.lire_octets(config.CHEMIN_RAW_SERIE_RP2022)
+    with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
+        csv = io.BytesIO(archive.read(config.CSV_SERIE_RP2022))
+    # Lu en nombre, "01001" deviendrait 1001 ; une colonne disparue fait échouer la lecture
+    serie = pd.read_csv(
+        csv, sep=";", usecols=["CODGEO", "P22_POP", "SUPERF"], dtype={"CODGEO": str}
+    )
+
+    assert len(serie) == config.NB_LIGNES_SERIE_RP2022, (
+        f"{len(serie)} lignes dans la série historique, {config.NB_LIGNES_SERIE_RP2022} attendues."
+    )
+    assert serie["CODGEO"].is_unique, "Des codes communes sont en double dans la série historique."
+    return serie
+
+
 def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
     """Renvoie les contours des communes d'une aire d'attraction, en WGS84 (COG 2025).
 

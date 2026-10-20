@@ -42,6 +42,8 @@ Ce ne sont pas des changements de choix fixés avant les résultats. Appliquées
 | Dénominateur de la variable à expliquer | Fichier série tel quel (occupés + chômeurs ayant déjà travaillé). ACT5 (occupés seulement) si Lyon est retenue avec ses arrondissements. | T5 |
 | Fiabilité de l'IVAL pour H3 | Décidé le 13/10 (amendement A1) : moyenne 2012-2022 avec au moins 5 sessions, H3 « non testable » si la fiabilité est sous 0,5. Voir §5 et le journal §13. | fait |
 | Scissions de communes, petites communes, communes à population nulle | À traiter à T5 avec des `assert` explicites. | T5 |
+| Superficie de la densité (§2.5) | Décidé le 20/10 par l'étudiant : `SUPERF` de la série historique (même source que `P22_POP`), et non la surface des contours IGN. Codé dans `nettoyage.population`, à journaliser avec l'usage de la série historique à la place de la source 2. | fait |
+| Forme et place de `densite` comme contrôle | À trancher en `/pilotage` avant T5 : log ou non, spécification principale ou robustesse (voir §10). | avant T5 |
 
 ## 2. Pièges qui traversent plusieurs sources
 
@@ -269,7 +271,9 @@ Elle contient les arrondissements et reproduit exactement le fichier série pour
   - COG 2025 : les 34 875 codes de l'AAV y sont, sauf Mayotte (17 codes) ; **les 45 arrondissements et leurs parents (69123, 13055, 75056) sont tous présents : double comptage** si l'on somme tout le fichier ou si l'on joint l'AAV et les arrondissements ensemble. Pour Lyon au grain arrondissement, prendre les 9 arrondissements sans 69123 ;
   - les 8 aires sont complètes. Somme de `P22_POP` (habitants) : Rennes 780 549, Nantes 1 041 894, Toulouse 1 513 396, Bordeaux 1 412 388, Lyon 2 327 861, Grenoble 724 742, Lille 1 528 848, Strasbourg 868 665 ;
   - la colonne `POPULATION` des contours cartiflette déjà en `raw/` vaut `P22_POP` pour les 2 179 unités des aires, arrondissements compris ;
-  - `SUPERF` et la surface des contours en Lambert 93 diffèrent de plus de 10 % pour 28 communes sur 2 179 (44188 : 58,81 contre 97,82 km²) : la source de la superficie de la densité est à choisir ;
+  - `SUPERF` et la surface des contours en Lambert 93 diffèrent de plus de 10 % (rapporté à `SUPERF`) pour 28 unités sur 2 179 (44188 : 58,81 contre 97,82 km²) ; surtout des communes à grands plans d'eau ou estuaires (lac de Grand-Lieu, Hourtin-Carcans, Loire, Gironde), mais 9 ont une `SUPERF` plus grande que la surface IGN (jusqu'à 1,38, Saint-Alban-de-Roche), sans explication vérifiée. Corrélation de rang entre les deux densités d'au moins 0,997 dans chaque aire. **Décidé le 20/10 : `SUPERF`**, codé dans `collecte.serie_historique_rp2022` et `nettoyage.population` (à journaliser) ;
+  - **densité très asymétrique** (de 4 à 19 232 hab/km² dans les 8 aires ; asymétrie 8,2, 0,4 en log) : dans les paires, 43 paires sur 5 890 (arrondissements de Lyon et Villeurbanne) font 34 % de la somme des carrés de `d_densite`, et `d_log_densite` est corrélé à `d_dist_lyc_prive_min` de −0,21 à −0,46 selon l'aire. Un contrôle linéaire en densité brute serait piloté par le centre de Lyon : forme et place du contrôle à fixer en `/pilotage` avant T5 ;
+  - `P22_POP` est décrite par le fichier `meta` comme « Population en 2022 (princ) », c'est-à-dire de l'exploitation principale.
   - **piège de téléchargement** : un premier téléchargement d'« évolution et structure » (49 Mo) a été tronqué sans erreur (`curl` a rendu 0) ; seul le `sha256` le révèle.
 - **Pièges**
   - **Dictionnaire de la page faux** : il nomme les employés `C22_POP15P_STAT_GSEC16_25` (en doublon avec `…_GSEC16_26`). Le fichier et le `meta_*.CSV` donnent `…_GSEC15_25`. Recopier les noms depuis l'en-tête.
