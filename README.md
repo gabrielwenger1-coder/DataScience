@@ -22,7 +22,15 @@ uv run pre-commit install        # active nb-clean et ruff avant chaque commit
 uv run pytest                    # lance les tests
 ```
 
-Le rapport est `rapport.ipynb` (pour l'instant la Fig. 1 et la Fig. 3), qui sera publié avec Quarto. Sur un compte neuf, les données sont téléchargées depuis les copies gelées publiques décrites ci-dessous, puis gardées dans `data/`.
+Le rapport est `rapport.ipynb` (pour l'instant le plan du rapport, la Fig. 1 et la Fig. 3). Le site se construit avec [Quarto](https://quarto.org/), déjà installé sur le SSPCloud :
+
+```bash
+uv run quarto render             # exécute rapport.ipynb et écrit le site dans _site/
+```
+
+`uv run` est nécessaire : il donne à Quarto le Python de l'environnement du projet, où `cadres_lycees` est installé.
+
+Sur un compte neuf, les données sont téléchargées depuis les copies gelées publiques décrites ci-dessous, puis gardées dans `data/`.
 
 ### Stockage des données
 
