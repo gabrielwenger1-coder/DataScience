@@ -136,6 +136,34 @@ def serie_historique_rp2022() -> pd.DataFrame:
     return serie
 
 
+def ival_lycees() -> pd.DataFrame:
+    """Renvoie les indicateurs de valeur ajoutée des lycées GT : une ligne par lycée et session.
+
+    Copie du 20/10/2026, contrôlée par sha256 comme l'IPS : le code échoue si la source a
+    changé depuis, au lieu de lire des données différentes. Tout est lu en chaîne, pour garder
+    les codes communes tels quels (« 2A004 », zéros en tête) : la conversion des valeurs se fait
+    au nettoyage.
+    """
+    if not stockage.existe(config.CHEMIN_RAW_IVAL):
+        reponse = requests.get(config.URL_IVAL, timeout=config.DELAI_TELECHARGEMENT_S)
+        reponse.raise_for_status()
+        sha256 = hashlib.sha256(reponse.content).hexdigest()
+        assert sha256 == config.SHA256_IVAL, (
+            f"L'export de l'IVAL a le sha256 {sha256}, {config.SHA256_IVAL} attendu : la source "
+            "a changé depuis le 20/10/2026, rien n'a été enregistré."
+        )
+        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_IVAL)
+
+    csv = io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_IVAL))
+    ival = pd.read_csv(csv, sep=";", encoding="utf-8-sig", dtype=str)
+
+    assert len(ival) == config.NB_LIGNES_IVAL, (
+        f"{len(ival)} lignes dans l'IVAL, {config.NB_LIGNES_IVAL} attendues."
+    )
+    assert not ival.duplicated(["uai", "annee"]).any(), "Lycée en double dans l'IVAL."
+    return ival
+
+
 def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
     """Renvoie les contours des communes d'une aire d'attraction, en WGS84 (COG 2025).
 

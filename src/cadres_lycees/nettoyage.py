@@ -1,4 +1,4 @@
-"""Nettoyage et jointures des sources : lycées avec leur aire et leur IPS, population."""
+"""Nettoyage et jointures des sources : lycées avec leur aire, leur IPS et leur IVAL, population."""
 
 import geopandas as gpd
 import pandas as pd
@@ -7,16 +7,20 @@ from cadres_lycees import config
 
 
 def lycees_geo(
-    annuaire: gpd.GeoDataFrame, ips: pd.DataFrame, referentiel: gpd.GeoDataFrame
+    annuaire: gpd.GeoDataFrame,
+    ips: pd.DataFrame,
+    sessions_ival: pd.DataFrame,
+    referentiel: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
-    """Renvoie les lycées de l'annuaire avec leur aire, leur secteur et leur IPS.
+    """Renvoie les lycées de l'annuaire avec leur aire, leur secteur, leur IPS et leur IVAL.
 
     Un lycée est rattaché à une aire par le code de sa commune dans l'annuaire, qui nomme les
     arrondissements de Lyon (693xx) comme le référentiel. `aire` est manquante pour un lycée
     situé hors des aires : il compte quand même dans l'accessibilité des communes proches.
     L'IPS est celui de la rentrée et de la mesure choisies dans `config` ; il reste manquant pour
-    un lycée sans IPS, une valeur manquante ne se remplace pas. Un UAI multi-sites compte pour un
-    lycée.
+    un lycée sans IPS, une valeur manquante ne se remplace pas. `sessions_ival` vient de
+    `collecte.ival_lycees` ; `ival` et `poids_ival` (voir `ival_par_lycee`) manquent pour un
+    lycée qui ne remplit pas la règle A1. Un UAI multi-sites compte pour un lycée.
     """
     # Un UAI multi-sites occupe plusieurs lignes, avec la même commune et les mêmes coordonnées
     nb_communes = annuaire.groupby("identifiant_de_l_etablissement")["code_commune"].nunique()
@@ -82,7 +86,20 @@ def lycees_geo(
     secteur_different = lycees["secteur_ips"].notna() & (lycees["secteur"] != lycees["secteur_ips"])
     uai_differents = lycees.loc[secteur_different, "uai"].tolist()
     assert not uai_differents, f"Secteur différent dans l'annuaire et l'IPS : {uai_differents}."
-    return lycees.drop(columns="secteur_ips")
+    lycees = lycees.drop(columns="secteur_ips")
+
+    # Comme pour l'IPS : des lycées de l'IVAL situés dans les aires ne sont pas des lycées
+    # retenus (nature, contrat, fermeture) ; on exige que la liste soit celle de `config`, pour
+    # qu'un lycée publié sous un autre UAI ne perde pas son IVAL sans erreur
+    ival = ival_par_lycee(sessions_ival)
+    dans_les_aires = sessions_ival["code_commune"].isin(referentiel["code_commune"])
+    uai_des_aires = set(sessions_ival.loc[dans_les_aires, "uai"].replace(config.UAI_IVAL_RATTACHES))
+    non_retenus = sorted((uai_des_aires & set(ival.index)) - set(lycees["uai"]))
+    assert non_retenus == sorted(config.UAI_IVAL_NON_RETENUS), (
+        f"Lycées de l'IVAL absents de la liste : {non_retenus}, attendus : "
+        f"{sorted(config.UAI_IVAL_NON_RETENUS)} (config.UAI_IVAL_NON_RETENUS)."
+    )
+    return lycees.merge(ival, left_on="uai", right_index=True, how="left", validate="many_to_one")
 
 
 def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -107,3 +124,44 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
             "densite": pop_superficie["P22_POP"] / pop_superficie["SUPERF"],
         }
     ).rename_axis("code_commune")
+
+
+def ival_par_lycee(sessions_ival: pd.DataFrame) -> pd.DataFrame:
+    """Renvoie l'IVAL de chaque lycée selon la règle A1 (PLAN §2.4), indexée par `uai`.
+
+    `ival` est la moyenne simple des `va_acces_2nde` des sessions 2012 à 2022, pour les lycées
+    qui en ont au moins 5 où la valeur ajoutée est renseignée ; `poids_ival` est la moyenne de
+    `presents_total` sur ces sessions. Les autres lycées sont absents du résultat. Les sessions
+    des UAI de `config.UAI_IVAL_RATTACHES` sont rattachées à l'UAI de l'annuaire : quand
+    plusieurs sites publient la même session, elle vaut la valeur ajoutée moyenne des sites
+    renseignés, pondérée par leurs présents, et ses présents sont ceux de ces sites additionnés.
+    """
+    rattaches = config.UAI_IVAL_RATTACHES
+    assert set(rattaches) <= set(sessions_ival["uai"]), "Un UAI rattaché manque à l'IVAL."
+
+    sessions = pd.DataFrame(
+        {
+            "uai": sessions_ival["uai"].replace(rattaches),
+            "annee": sessions_ival["annee"].astype(int),
+            "va_acces_2nde": pd.to_numeric(sessions_ival["va_acces_2nde"]),
+            "presents_total": pd.to_numeric(sessions_ival["presents_total"]),
+        }
+    )
+    dans_la_periode = sessions["annee"].between(
+        config.PREMIERE_SESSION_IVAL, config.DERNIERE_SESSION_IVAL
+    )
+    valides = sessions[dans_la_periode & sessions["va_acces_2nde"].notna()].copy()
+    assert (valides["presents_total"] > 0).all(), "Session valide sans présents."
+
+    # Pour un lycée d'un seul site, la moyenne pondérée d'une session est sa valeur ajoutée
+    valides["va_x_presents"] = valides["va_acces_2nde"] * valides["presents_total"]
+    par_session = valides.groupby(["uai", "annee"])[["va_x_presents", "presents_total"]].sum()
+    par_session["va"] = par_session["va_x_presents"] / par_session["presents_total"]
+
+    par_lycee = par_session.groupby("uai").agg(
+        ival=("va", "mean"),
+        poids_ival=("presents_total", "mean"),
+        nb_sessions=("va", "size"),
+    )
+    retenus = par_lycee[par_lycee["nb_sessions"] >= config.NB_SESSIONS_MIN_IVAL]
+    return retenus[["ival", "poids_ival"]]

@@ -127,6 +127,48 @@ UAI_IPS_NON_RETENUS = (
     "0596681S",
 )
 
+# IVAL des lycées généraux et technologiques (source 6), copie du 20/10/2026 : l'export est
+# identique d'un téléchargement à l'autre (4 essais), et le sha256 fait échouer le code si la
+# source a changé depuis
+URL_IVAL = (
+    "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
+    "fr-en-indicateurs-de-resultat-des-lycees-gt_v2/exports/csv"
+)
+SHA256_IVAL = "6ab77b391e3405f5157bb942d4548d5f1cfbacd94e76dd52b93db9b370de8658"
+CHEMIN_RAW_IVAL = "raw/ival_lycees_gt_20261020.csv"
+NB_LIGNES_IVAL = 32485
+# Règle A1 (PLAN §2.4) : sessions du bac retenues, entre les deux recensements, et nombre
+# minimal de sessions où la valeur ajoutée est renseignée
+PREMIERE_SESSION_IVAL = 2012
+DERNIERE_SESSION_IVAL = 2022
+NB_SESSIONS_MIN_IVAL = 5
+# Lycées publiés dans l'IVAL sous un autre UAI que celui de l'annuaire du 13/10/2026 : leurs
+# sessions sont rattachées à l'UAI de l'annuaire, avec la même règle dans toutes les aires (choix
+# du 20/10). Les trois lycées privés de Saint-Sébastien-sur-Loire, regroupés en 2026 sous un
+# nouvel UAI ; la section d'enseignement général du lycée Philippe Cousteau (Bordeaux), qui
+# porte son IVAL ; Chevreul Lestonnac (Lyon 7e), absorbé en 2019
+UAI_IVAL_RATTACHES = {
+    "0440256P": "0443088T",
+    "0440279P": "0443088T",
+    "0441653H": "0443088T",
+    "0332835C": "0332346W",
+    "0690535G": "0690574Z",
+}
+# Lycées de l'IVAL situés dans les communes des 8 aires candidates, qui remplissent la règle A1
+# mais ne sont pas des lycées retenus (après rattachement) : lycées professionnels (0330018R,
+# 0590125R), lycée climatique (0380097Z), lycée agricole (0596281G), hors contrat dans
+# l'annuaire (0596681S Averroès, 0694086S Al Kindi) et Sainte-Claire (0593113N), absent de
+# l'annuaire. En changer d'aires ou de règle impose de revoir cette liste
+UAI_IVAL_NON_RETENUS = (
+    "0330018R",
+    "0380097Z",
+    "0590125R",
+    "0593113N",
+    "0596281G",
+    "0596681S",
+    "0694086S",
+)
+
 # Secteur de l'annuaire (`statut_public_prive`) -> secteur du projet
 SECTEURS = {"Public": "public", "Privé": "prive"}
 # Secteur de l'IPS (`secteur`) -> secteur du projet

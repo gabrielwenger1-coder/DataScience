@@ -5,6 +5,7 @@ distance attendue se calcule de tête.
 """
 
 import geopandas as gpd
+import numpy as np
 import pytest
 from shapely.geometry import Point, Polygon, box
 
@@ -121,3 +122,56 @@ def test_coordonnees_en_degres_refusees():
     communes["centroide"] = communes["centroide"].to_crs(config.CRS_CARTES)
     with pytest.raises(AssertionError, match="EPSG"):
         accessibilite.indicateurs(communes, lycees((0, 4000)), "lyc_prive")
+
+
+def test_moyenne_ponderee_sans_les_valeurs_manquantes():
+    """La moyenne de l'attribut est pondérée par `poids`, bord du rayon compris ; un lycée sans
+    valeur reste compté mais sort de la moyenne, au numérateur comme au dénominateur.
+
+    Une moyenne simple, ou le poids du lycée sans valeur laissé au dénominateur, donnerait un
+    `ival_moy_5km` plausible et faux.
+    """
+    lycees_ival = gpd.GeoDataFrame(
+        {"ival": [4.0, 1.0, np.nan], "poids_ival": [3.0, 1.0, 2.0]},
+        geometry=[point(3000, 4000), point(0, 1000), point(0, 2000)],
+        crs=config.CRS_CALCUL,
+    )
+
+    resultat = accessibilite.indicateurs(
+        commune_unique(), lycees_ival, "lyc", attribut="ival", poids="poids_ival"
+    )
+
+    ligne = resultat.loc["A"]
+    assert ligne["n_lyc_3km"] == 2  # le lycée sans valeur, à 2 km, reste compté
+    assert ligne["n_lyc_5km"] == 3
+    # 3 km : seul le lycée à 1 km a une valeur ; 1/3 si le poids 2 restait au dénominateur
+    assert ligne["ival_moy_3km"] == pytest.approx(1.0)
+    # 5 km, bord compris : (4×3 + 1×1) / (3 + 1) = 3,25 ; moyenne simple 2,5 ; bord exclu 1
+    assert ligne["ival_moy_5km"] == pytest.approx(3.25)
+
+
+def test_moyenne_manquante_sans_valeur_dans_le_rayon():
+    """Sans lycée renseigné dans le rayon, la moyenne est manquante et jamais 0 : un 0 se lirait
+    comme une valeur ajoutée nulle.
+    """
+    communes = communes_jouets(
+        [
+            ("A", rectangle(-2000, -2000, 2000, 2000), point(0, 0)),
+            ("C", rectangle(-2000, 28000, 2000, 32000), point(0, 30000)),
+        ]
+    )
+    lycees_ival = gpd.GeoDataFrame(
+        {"ival": [np.nan, 2.0], "poids_ival": [1.0, 1.0]},
+        geometry=[point(0, 2000), point(0, 4000)],
+        crs=config.CRS_CALCUL,
+    )
+
+    resultat = accessibilite.indicateurs(
+        communes, lycees_ival, "lyc", attribut="ival", poids="poids_ival"
+    )
+
+    # A : à 3 km, un seul lycée, sans valeur ; à 5 km, le lycée à 4 km (valeur 2) entre
+    assert np.isnan(resultat.loc["A", "ival_moy_3km"])
+    assert resultat.loc["A", "ival_moy_5km"] == pytest.approx(2.0)
+    # C : le lycée le plus proche est à 30 - 4 = 26 km
+    assert resultat.loc["C", ["ival_moy_3km", "ival_moy_5km", "ival_moy_10km"]].isna().all()
