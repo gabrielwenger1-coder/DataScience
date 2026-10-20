@@ -1,43 +1,37 @@
 # Lycées et géographie des cadres dans trois aires urbaines de province
 
-> **Projet** : Python pour la data science (ENSAE), groupe de 3 personnes
-> **Rendu** : mardi 24 novembre 2026 · **Soutenance** : janvier 2027
-> **Grille d'évaluation** : https://pythonds.linogaliana.fr/content/annexes/evaluation.html
-> **Statut du document** : plan de référence du projet. Toute décision qui s'en écarte est notée dans le journal des décisions (section 13).
+> **Projet** : Python pour la data science (ENSAE), groupe de 3 personnes **Rendu** : mardi 24 novembre 2026 · **Soutenance** : janvier 2027 **Grille d'évaluation** : https://pythonds.linogaliana.fr/content/annexes/evaluation.html **Statut du document** : plan de référence du projet. Toute décision qui s'en écarte est notée dans le journal des décisions (section 13).
 
----
+------------------------------------------------------------------------
 
 ## Sommaire
 
-0. Résumé du projet
-1. Problématique, contexte et hypothèses
-2. Périmètre et choix structurants (fixés avant de voir les résultats)
-3. Sources de données
-4. Construction de la base communale (pipeline)
-5. Méthodologie d'analyse
-6. Plan du rapport final
-7. Organisation du dépôt
-8. Conventions de travail
-9. Calendrier, rôles et jalons
+0.  Résumé du projet
+1.  Problématique, contexte et hypothèses
+2.  Périmètre et choix structurants (fixés avant de voir les résultats)
+3.  Sources de données
+4.  Construction de la base communale (pipeline)
+5.  Méthodologie d'analyse
+6.  Plan du rapport final
+7.  Organisation du dépôt
+8.  Conventions de travail
+9.  Calendrier, rôles et jalons
 10. Risques et ordre de sacrifice
 11. Checklist de rendu
 12. Instructions pour Claude Code : par où commencer
 13. Journal des décisions
 
----
+------------------------------------------------------------------------
 
 ## 0. Résumé du projet
 
 **Question.** Dans des aires urbaines de province aux traditions scolaires contrastées, les communes offrant un meilleur accès à des lycées privés ou à forte valeur ajoutée concentrent-elles davantage de cadres que leurs voisines, et ce lien résiste-t-il face aux autres infrastructures ?
 
-**Approche.**
-- On construit une base à une ligne par commune pour trois aires d'attraction des villes (hors Paris), en croisant le recensement, les données de l'Éducation nationale et des données d'infrastructures.
-- On mesure l'accès de chaque commune aux lycées, et non leur simple présence dans la commune.
-- On compare les communes à position égale dans l'aire : par anneaux de distance au centre, puis par paires de communes contiguës.
+**Approche.** - On construit une base à une ligne par commune pour trois aires d'attraction des villes (hors Paris), en croisant le recensement, les données de l'Éducation nationale et des données d'infrastructures. - On mesure l'accès de chaque commune aux lycées, et non leur simple présence dans la commune. - On compare les communes à position égale dans l'aire : par anneaux de distance au centre, puis par paires de communes contiguës.
 
 **Statut des résultats.** Le projet décrit des associations, pas des effets causaux. Un résultat nul bien établi est un résultat valable et sera présenté comme tel.
 
----
+------------------------------------------------------------------------
 
 ## 1. Problématique, contexte et hypothèses
 
@@ -52,7 +46,7 @@
 Elles sont fixées avant toute analyse. L'indicateur principal est défini en section 2.4.
 
 | ID | Énoncé | Mesure | Test principal | Figure |
-|----|--------|--------|----------------|--------|
+|-------------|-------------|-------------|---------------------|-------------|
 | H1 | À distance égale du centre de l'aire, la part de cadres est plus élevée dans les communes ayant un meilleur accès aux lycées privés sous contrat. | `n_lyc_prive_5km` contre `part_cadres_2022` | Comparaison par anneaux de distance (5.2) et différences entre communes contiguës (5.3) | Fig. 4, 5 |
 | H2 | Ce lien est plus faible dans l'aire de l'Ouest, où le privé est plus répandu. | H1 estimée aire par aire | Comparaison des écarts entre aires (5.4) | Fig. 4 (une facette par aire) |
 | H3 | C'est la qualité des lycées accessibles (valeur ajoutée IVAL), plus que leur nombre, qui accompagne la hausse de la part de cadres entre 2011 et 2022. | `ival_moy_5km` contre `evol_cadres_pts`, à nombre de lycées égal | Section 5.5 | Fig. 6 |
@@ -66,7 +60,7 @@ Elles sont fixées avant toute analyse. L'indicateur principal est défini en se
 
 Ces limites sont annoncées dès l'introduction du rapport et reprises dans la conclusion.
 
----
+------------------------------------------------------------------------
 
 ## 2. Périmètre et choix structurants (fixés avant de voir les résultats)
 
@@ -84,10 +78,30 @@ Fixer ces choix à l'avance évite de chercher la spécification qui « marche �
 - **Choix des aires (semaine 1, à partir des données).**
   - Candidates : Rennes, Nantes, Toulouse, Bordeaux, Lyon, Grenoble, Lille, Strasbourg.
   - Critères :
-    - (a) au moins une aire de l'Ouest (Rennes ou Nantes) ;
-    - (b) un contraste dans le poids du privé, mesuré par la part de lycées privés sous contrat et l'écart d'IPS moyen entre public et privé ;
-    - (c) des tailles d'aire comparables ;
-    - (d) au moins une dizaine de lycées privés par aire (seuil indicatif).
+    - 
+
+      (a) au moins une aire de l'Ouest (Rennes ou Nantes) ;
+
+    - 
+
+      (b) un contraste dans le poids du privé, mesuré par la part de lycées privés sous contrat et l'écart d'IPS moyen entre public et privé ;
+
+    - 
+
+      (c) des tailles d'aire comparables (population de l'aire : somme de `P22_POP` du recensement 2022) ;
+
+    - 
+
+      (d) au moins une dizaine de lycées privés par aire (seuil indicatif) ;
+
+    - 
+
+      (e) un support suffisant de l'exposition : le nombre de cellules estimables à 10 km (règle du §5.2, après fusion des anneaux et contrôle de l'équilibre de distance) et le nombre de paires de communes contiguës dont le statut exposé/non exposé diffère (au moins un lycée privé sous contrat à 10 km). Les valeurs à 5 km sont journalisées à côté. L'aire de l'Ouest retenue est celle qui maximise le nombre de cellules estimables ; à égalité, celle qui compte le plus de paires de statut différent ;
+
+    - 
+
+      (f) la faisabilité : le coût réel de Lyon (arrondissements et tableaux ACT5, donc un second chemin pour la variable à expliquer) est mesuré avant toute décision. Une exclusion de Lyon est justifiée par écrit, en rappelant que d'après les premiers comptes d'exposition Lyon est l'aire la mieux dotée en support.
+  - Les valeurs de tous les critères (a) à (f) pour les 8 candidates sont journalisées au moment du choix (§13), dans le tableau de support décrit au §5.2.
   - Le choix et ses justifications forment la section 3.1 du rapport.
 
 ### 2.3 Variable à expliquer
@@ -107,7 +121,7 @@ Fixer ces choix à l'avance évite de chercher la spécification qui « marche �
 - **Indicateurs calculés pour chaque commune** :
   - `n_lyc_prive_5km`, `n_lyc_public_5km` : nombre de lycées dans le rayon ;
   - `dist_lyc_prive_min`, `dist_lyc_public_min` : distance au plus proche, en km ;
-  - `ival_moy_5km` : valeur ajoutée moyenne des lycées dans le rayon, pondérée par le nombre d'élèves présents au bac si l'information est disponible.
+  - `ival_moy_5km` : pour chaque lycée, moyenne simple des `va_acces_2nde` des sessions 2012 à 2022, à condition d'avoir au moins 5 sessions valides ; puis moyenne des lycées du rayon, pondérée par la moyenne de `presents_total` sur ces sessions. Les lycées de moins de 5 sessions valides restent comptés dans les `n_lyc_*` mais sortent de l'IVAL. Le stock de lycées est l'instantané de l'annuaire du 13/10/2026 (les lycées fermés en sont absents).
 - **Effet de bord** : on inclut les lycées situés jusqu'à 10 km au-delà de la limite de l'aire. Sans cela, les communes du bord paraîtraient artificiellement mal desservies.
 
 ### 2.5 Variables de contrôle et « mauvais contrôles »
@@ -122,17 +136,16 @@ Fixer ces choix à l'avance évite de chercher la spécification qui « marche �
   - Ces deux variables restent purement descriptives.
 - **Prix immobiliers (DVF)** : ils sont à la fois cause et conséquence. On les présente avec et sans ce contrôle, et on discute l'écart.
 
----
+------------------------------------------------------------------------
 
 ## 3. Sources de données
 
-Priorité : **P1** = indispensable aux hypothèses H1 à H3, **P2** = partie 5 et contrôles, **P3** = bonus si le temps le permet.
-Les URL marquées « à confirmer » doivent être vérifiées en semaine 1, et le lien direct de téléchargement copié dans `config.py`.
+Priorité : **P1** = indispensable aux hypothèses H1 à H3, **P2** = partie 5 et contrôles, **P3** = bonus si le temps le permet. Les URL marquées « à confirmer » doivent être vérifiées en semaine 1, et le lien direct de téléchargement copié dans `config.py`.
 
 ### 3.1 Tableau des sources
 
-| # | Source | Producteur | Maille | Accès | Rôle | Priorité |
-|---|--------|-----------|--------|-------|------|----------|
+| \# | Source | Producteur | Maille | Accès | Rôle | Priorité |
+|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
 | 1 | Séries historiques : population active de 25-54 ans par CSP (1968-2022) — https://www.insee.fr/fr/statistiques/1893185 | Insee | Commune | Fichier | Variable à expliquer (2011, 2022) | P1 |
 | 2 | Recensement 2022, « Évolution et structure de la population » — https://www.insee.fr/fr/statistiques/8581696 | Insee | Commune | Fichier ou API (`pynsee`) | Population, densité, robustesse (cadres 15 ans ou plus) | P1 |
 | 3 | Annuaire de l'éducation — https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/api/ | Ministère de l'Éducation nationale | Établissement (point) | **API** Opendatasoft | Liste des lycées, statut public/privé, coordonnées | P1 |
@@ -155,16 +168,16 @@ Les URL marquées « à confirmer » doivent être vérifiées en semaine 1, et 
 ### 3.2 Points d'attention à documenter dans le rapport (encadré « choix et biais »)
 
 - **IPS** : les données du privé ne sont pas comparables avant 2023, car la remontée des professions des parents s'y est fortement améliorée. On n'utilise que la série à partir de 2023. L'IPS reste descriptif (voir 2.5).
-- **IVAL** : c'est une mesure relative, qui ne couvre que le public et le privé sous contrat, et qui comprend plusieurs indicateurs (taux de réussite, taux d'accès de la seconde au bac, taux de mentions). Indicateur principal : **valeur ajoutée du taux d'accès de la seconde au bac**, car il reflète le parcours complet de l'élève. Le taux de réussite sert en robustesse. Décalage temporel : les IVAL sont récents, alors que l'évolution des cadres porte sur 2011-2022. Si l'ancienne version des IVAL sur data.gouv.fr le permet, on vérifie que les valeurs ajoutées sont stables dans le temps.
+- **IVAL** : c'est une mesure relative, qui ne couvre que le public et le privé sous contrat, et qui comprend plusieurs indicateurs (taux de réussite, taux d'accès de la seconde au bac, taux de mentions). Indicateur principal : **valeur ajoutée du taux d'accès de la seconde au bac**, car il reflète le parcours complet de l'élève. Le taux de réussite sert en robustesse. Décalage temporel : les IVAL sont récents, alors que l'évolution des cadres porte sur 2011-2022. Vérification faite le 13/10/2026 : l'ancienne version de data.gouv est identique à la v2 (pas de millésime indépendant), et la valeur ajoutée d'un lycée est peu stable d'une session à l'autre (corrélation de 0,56 à un an, 0,32 à cinq ans, 0,12 entre 2012 et 2025). On retient donc la moyenne des sessions 2012 à 2022 (§2.4), qui couvre la période entre les deux recensements ; c'est un choix de conception, pas un constat de stabilité. Contrôle sans cadres : pas de rupture de la corrélation de `va_acces_2nde` autour de 2016-2017 (0,60 entre 2016 et 2017), un creux vers 2017-2020 de cause non vérifiée, guides méthodologiques 2016 et 2020 non lus. **Fiabilité** : corrélation, au niveau commune, entre les `ival_moy_5km` calculés sur 2012-2017 et sur 2018-2022, corrigée par Spearman-Brown. En dessous de 0,5, H3 est « non testable avec cette mesure » (ni confirmée ni infirmée). Robustesse : moyenne sur 2012-2025.
 - **Filosofi** : le millésime 2021 est le dernier de l'ancien dispositif. Le millésime 2023 (Filosofi 2) n'est pas comparable et ne fournit que deux indicateurs à la commune.
 - **Secret statistique et petites communes** : on signale les communes de moins de 200 actifs de 25-54 ans (seuil indicatif). Les moyennes sont pondérées par le nombre d'actifs. On teste aussi l'exclusion de ces communes.
 - **DVF** : fenêtre de cinq ans glissants. On utilise les ventes d'appartements et de maisons sur 2020-2024, puis la médiane du prix au m² par commune, à condition d'avoir au moins 10 ventes (sinon valeur manquante, signalée).
 
----
+------------------------------------------------------------------------
 
 ## 4. Construction de la base communale (pipeline)
 
-```mermaid
+``` mermaid
 flowchart LR
     A[Référentiel communes<br/>AAV + COG + contours] --> D[Accessibilité<br/>fonction générique]
     B[Recensement<br/>cadres 2011 et 2022] --> G[Base communale<br/>final/base_communale.parquet]
@@ -179,47 +192,57 @@ flowchart LR
 Chaque étape correspond à une fonction de `src/cadres_lycees/`. Elle lit les données brutes depuis S3 (et les télécharge si elles n'y sont pas encore), puis écrit son résultat sur S3. Chaque étape se termine par des **vérifications** (`assert`) qui font échouer le code bruyamment si une jointure perd des lignes.
 
 | Étape | Fonction(s) | Sortie | Vérifications |
-|-------|-------------|--------|---------------|
+|----------------|-------------------|----------------|----------------------|
 | A. Référentiel | `geo.referentiel_communes(aires)` | GeoDataFrame des communes des 3 aires : `code_commune`, `aire`, `pole_couronne`, `geometry`, `centroide`, `dist_centre_km` | Nombre de communes égal à celui de la table AAV ; codes uniques ; aucune géométrie vide |
 | B. Cadres | `collecte.series_historiques_csp()`, `nettoyage.part_cadres()` | `part_cadres_2011`, `part_cadres_2022`, `evol_cadres_pts`, `actifs_2022` | Parts comprises entre 0 et 1 ; moins de 1 % de communes sans correspondance après passage au COG 2025 |
-| C. Lycées | `collecte.annuaire_education(departements)`, `collecte.ips_lycees()`, `collecte.ival_lycees()`, `nettoyage.lycees_geo()` | GeoDataFrame des lycées : `uai`, `secteur`, `type`, `ips`, `ival_acces`, `ival_reussite`, `geometry` | Identifiants UAI uniques ; part des lycées géolocalisés > 98 % ; part des lycées avec IVAL indiquée dans le rapport |
-| D. Accessibilité | `accessibilite.indicateurs(communes, points, rayons, filtre, attribut)` | Colonnes `n_<x>_<r>km`, `dist_<x>_min`, `<attr>_moy_<r>km` | Tests unitaires sur données jouets (`tests/test_accessibilite.py`) |
+| C. Lycées | `collecte.annuaire_education(departements)`, `collecte.ips_lycees()`, `collecte.ival_lycees()`, `nettoyage.lycees_geo()` | GeoDataFrame des lycées : `uai`, `secteur`, `type`, `ips`, `ival_acces`, `ival_reussite`, `geometry` | Identifiants UAI uniques ; part des lycées géolocalisés \> 98 % ; part des lycées avec IVAL indiquée dans le rapport ; `assert` permanent : aucun lycée situé à moins de 10 km d'une commune de l'aire n'est dans un département non demandé (les départements viennent de la colonne `DEP` de l'AAV), rejoué pour les 3 aires retenues |
+| D. Accessibilité | `accessibilite.indicateurs(communes, points, rayons, filtre, attribut)` | Colonnes `n_<x>_<r>km`, `dist_<x>_min`, `<attr>_moy_<r>km` | Tests unitaires sur données jouets (`tests/test_accessibilite.py`) ; `assert` dans le pipeline : les comptes du tableau de support (§2.2, §5.2) sont reproduits pour les aires retenues |
 | E. Contrôles | `collecte.dvf(departements)`, `nettoyage.prix_m2()`, `nettoyage.densite()` | `prix_m2_med`, `densite`, `niveau_vie_med` (descriptif) | Nombre de ventes par commune ; règle du seuil de 10 ventes appliquée |
-| F. Paires | `geo.paires_contigues(communes)` | Une ligne par paire (i < j) de communes qui se touchent dans une même aire, avec les écarts `d_part_cadres`, `d_n_lyc_prive_5km`, etc. | Pas de doublon (i,j)/(j,i) ; les deux communes appartiennent à la même aire |
+| F. Paires | `geo.paires_contigues(communes)` | Une ligne par paire (i \< j) de communes qui se touchent dans une même aire, avec les écarts `d_part_cadres`, `d_n_lyc_prive_5km`, etc. | Pas de doublon (i,j)/(j,i) ; les deux communes appartiennent à la même aire |
 | G. Table finale | `pipeline.construire_base()` | `final/base_communale.parquet`, `final/paires.parquet`, `docs/dictionnaire_variables.md` | Une ligne par commune ; dictionnaire à jour |
 
----
+------------------------------------------------------------------------
 
 ## 5. Méthodologie d'analyse
 
 Rappel : l'ENSAE n'attend plus de partie modélisation. L'analyse repose sur des comparaisons transparentes. Une régression linéaire peut apparaître, uniquement comme outil descriptif (« à distance au centre égale, l'écart vaut… »), jamais comme exercice de prédiction.
 
 ### 5.1 Descriptif (sections 3.1 à 3.3 du rapport)
+
 - **Fig. 1** : pour chaque aire, part de lycées privés et écart d'IPS public/privé. Justifie le choix des aires et motive H2.
 - **Fig. 2** : part de cadres selon la distance au centre, avec une courbe lissée par aire. Montre pourquoi il faut comparer à distance égale.
 - **Fig. 3** : carte interactive de l'accès aux lycées (folium ou plotly), avec les lycées en points colorés selon le statut public/privé.
 
-### 5.2 H1 : comparaison par anneaux de distance
-- **Anneaux** : 0-5, 5-10, 10-20, 20-30 et plus de 30 km du centre. Les bornes sont ajustées si un anneau compte moins de 15 communes, et ces ajustements sont documentés.
-- Dans chaque anneau et chaque aire, on compare la part moyenne de cadres, pondérée par les actifs, des communes **avec** au moins un lycée privé à 5 km et des communes **sans**.
-- Intervalles de confiance par **bootstrap** sur les communes (1 000 tirages).
-- **Fig. 4** : graphique en barres ou en points avec intervalles ; un panneau par aire, les anneaux en abscisse. C'est la figure centrale du rapport.
+### 5.2 H1 : comparaison par anneaux de distance (complément des paires)
 
-### 5.3 H1 : différences entre communes contiguës
-- Pour chaque paire de communes qui se touchent : `d_part_cadres` comparé à `d_n_lyc_prive_5km`.
+Les anneaux complètent l'estimation par paires (5.3) là où les cellules sont estimables. - **Anneaux** : 0-5, 5-10, 10-20, 20-30 et plus de 30 km du centre. - **Cellule estimable.** Une cellule (aire × anneau) n'est estimée que si les deux conditions suivantes sont remplies, au rayon considéré : - chacun des deux groupes, communes **avec** au moins un lycée privé dans le rayon et communes **sans**, compte au moins 15 communes. Sinon, la cellule est fusionnée avec l'anneau voisin qui compte le moins de communes, jusqu'à ce que la condition soit remplie ; si elle ne l'est jamais, l'aire est « non estimable » par anneaux. Le seuil de 15 communes est celui du plan d'origine ; - l'écart entre les distances moyennes au centre des deux groupes, vérifié après fusion, ne dépasse pas 2 km (borne proposée, à valider avant la pose du tag `plan-fige` ; elle correspond à 20 % de la largeur d'un anneau de 10 km), et la comparaison est contrôlée par `dist_centre_km` dans la cellule. Une cellule qui dépasse la borne est non estimable, sans nouvelle fusion. - Dans chaque cellule estimable, on compare la part moyenne de cadres, pondérée par les actifs, des communes avec et sans. - Intervalles de confiance par **bootstrap** sur les communes (1 000 tirages). - **Rayons.** Le rayon de 5 km reste principal. Le rayon de 10 km, qui reste une spécification de robustesse (§2.4), est calculé pour les mêmes aires et rapporté à côté du 5 km sans le remplacer ; sa concordance avec le 5 km entre dans le verdict de H1 (§5.3). - **Tableau de support**, livrable commité dans `docs/` avant que le choix des aires soit journalisé, et publié avant tout résultat sur les cadres. Pour chacune des 8 candidates, à 5 et à 10 km : population de l'aire, nombre et part de communes exposées, effectifs avec/sans par cellule après fusion, distance moyenne au centre de chaque groupe, nombre de cellules estimables, nombre de paires de statut différent, et corrélation entre `d_dist_lyc_prive_min` et l'écart de distance au centre dans les paires. - **Fig. 4** : graphique en barres ou en points avec intervalles ; un panneau par aire, les anneaux en abscisse. Elle complète la Fig. 5 là où les cellules sont estimables.
+
+### 5.3 H1 : différences entre communes contiguës (résultat principal)
+
+- Pour chaque paire de communes qui se touchent : `d_part_cadres` comparé à `d_dist_lyc_prive_min`, l'écart de distance au plus proche lycée privé sous contrat. C'est l'estimation principale de H1 et elle porte le verdict. L'écart de distance au centre (`d_dist_centre_km`, §2.5) est en contrôle, car la distance au plus proche lycée varie avec la distance à la ville.
+- `d_n_lyc_prive_5km` est l'estimation secondaire.
 - **Logique** : tout ce que deux voisines partagent (marché de l'emploi, climat, prix régionaux) s'annule dans la différence.
 - **Fig. 5** : nuage de points regroupé par classes (binned scatter), avec la pente d'une régression des écarts de part de cadres sur les écarts d'accès.
 - **Limite** : les paires ne sont pas indépendantes, car une même commune apparaît dans plusieurs paires. Les intervalles sont calculés par bootstrap **par commune**, et non par paire.
+- **Verdict de H1**, aire par aire, lu sur la pente principale (`d_part_cadres` sur `d_dist_lyc_prive_min`, intervalle de confiance à 95 %). Sens attendu : plus proche d'un lycée privé, plus de cadres (pente négative). Deux estimations « concordent » si elles ont le même signe et des intervalles qui se recoupent (estimations de 5 et de 10 km, cellule estimable par cellule estimable) ; pour les deux écarts d'accès des paires, on compare seulement le sens.
+  - « confirmée » : pente principale dans le sens attendu avec un intervalle qui exclut zéro, pente secondaire dans le sens attendu, estimations de 5 et de 10 km concordantes dans chaque cellule estimable ;
+  - « nuancée » : intervalle qui exclut zéro dans le sens attendu, mais pente secondaire de sens contraire ou estimations de 5 et de 10 km non concordantes ;
+  - « infirmée » : pente de sens contraire dont l'intervalle exclut zéro, ou **résultat nul établi**, c'est-à-dire un intervalle qui contient zéro avec des cellules estimables aux deux rayons (5 et 10 km) dont les estimations concordent. Un résultat nul n'est jamais dit « établi » sans cellules estimables aux deux rayons ;
+  - « non concluante » : tous les autres cas, en particulier un intervalle qui contient zéro sans cellule estimable aux deux rayons.
 
 ### 5.4 H2 : hétérogénéité entre aires
+
 - On répète 5.2 et 5.3 aire par aire, puis on compare les écarts. Ce sont les facettes de la Fig. 4.
+- **H2 est descriptive** : une seule aire de l'Ouest parmi trois. On compare les estimations aire par aire avec leurs intervalles, au même rayon, sans test de différence entre aires.
 
 ### 5.5 H3 : qualité ou simple présence
+
 - **Population** : les communes ayant au moins un lycée accessible.
 - On croise `evol_cadres_pts` avec `ival_moy_5km` (en terciles), à nombre de lycées accessibles comparable et anneau par anneau.
 - **Fig. 6** : graphique en terciles d'IVAL, une couleur par aire.
 
 ### 5.6 Robustesse (un tableau récapitulatif)
+
 - Rayons de 3 et 10 km.
 - Résultats avec et sans le contrôle des prix au m².
 - Part de cadres parmi les 15 ans ou plus (recensement 2022) à la place des 25-54 ans.
@@ -229,62 +252,60 @@ Rappel : l'ENSAE n'attend plus de partie modélisation. L'analyse repose sur des
 - **Autocorrélation spatiale** : indice I de Moran (packages `esda` et `libpysal`, contiguïté de type Queen) sur `part_cadres_2022`, puis sur les écarts restants après comparaison par anneaux. On interprète ce que cela implique pour les intervalles de confiance.
 
 ### 5.7 H4 : lycées et autres infrastructures
+
 - La même fonction `accessibilite.indicateurs` est appliquée aux gares, aux équipements sportifs (Data ES) et aux équipements culturels (BPE). L'APL est utilisée directement, puisqu'elle est déjà calculée par la DREES.
 - Toutes les mesures d'accès sont standardisées (centrées réduites) à l'intérieur de chaque aire. On compare leurs associations avec la part de cadres, anneau par anneau et dans les paires contiguës.
 - **Fig. 7** : un point par infrastructure avec son intervalle de confiance, triés de la plus forte à la plus faible association.
 
 ### 5.8 Règle contre la multiplication des tests
+
 - Seules les spécifications de la section 2.4 constituent les résultats principaux. Tout le reste est présenté comme robustesse ou exploration.
 - Si une hypothèse est infirmée, on le dit clairement : on ne cherche pas une autre spécification jusqu'à ce que « ça marche ».
 
----
+------------------------------------------------------------------------
 
 ## 6. Plan du rapport final (`rapport.ipynb`, publié avec Quarto)
 
 **Titre : « À quelques kilomètres près : lycées et géographie des cadres dans trois aires urbaines de province »**
 
-0. **Résumé** en cinq lignes : la question, les données, le résultat principal, la limite principale.
-1. **Introduction**
-   - 1.1 Pourquoi les lycées : Fack et Grenet (2010), le contraste régional public/privé.
-   - 1.2 Question et hypothèses H1 à H4 (tableau de la section 1.2).
-   - 1.3 Ce que le projet peut et ne peut pas montrer.
-2. **Construire la base : une ligne par commune, quatre familles de variables**
-   - 2.1 Schéma du pipeline et tableau des sources.
-   - 2.2 Variable à expliquer.
-   - 2.3 Variable d'intérêt : l'accessibilité aux lycées (définition, rayon, effet de bord).
-   - 2.4 Contrôles et mauvais contrôles.
-   - 2.5 Encadré « choix et biais ».
-3. **Trois aires, trois profils**
-   - 3.1 Pourquoi ces trois aires (Fig. 1).
-   - 3.2 Le gradient centre-périphérie des cadres (Fig. 2).
-   - 3.3 La géographie de l'accès aux lycées (Fig. 3).
-4. **À position égale, l'accès aux lycées fait-il une différence ?**
-   - 4.1 Comparaison par anneaux (Fig. 4).
-   - 4.2 Comparaison entre communes contiguës (Fig. 5).
-   - 4.3 L'Ouest est-il différent ?
-   - 4.4 Qualité ou présence ? (Fig. 6)
-   - 4.5 Robustesse : tableau récapitulatif et indice de Moran.
-5. **Les lycées face aux autres infrastructures** (Fig. 7).
-6. **Conclusion**
-   - Tableau des hypothèses (confirmée, nuancée ou infirmée).
-   - Limites.
-   - Pistes : échelle IRIS, flux migratoires MIGCOM, temps de trajet.
-7. **Annexes**
-   - Reproduire le projet.
-   - Dictionnaire des variables.
-   - Journal des décisions.
+0.  **Résumé** en cinq lignes : la question, les données, le résultat principal, la limite principale.
+1.  **Introduction**
+    - 1.1 Pourquoi les lycées : Fack et Grenet (2010), le contraste régional public/privé.
+    - 1.2 Question et hypothèses H1 à H4 (tableau de la section 1.2).
+    - 1.3 Ce que le projet peut et ne peut pas montrer.
+2.  **Construire la base : une ligne par commune, quatre familles de variables**
+    - 2.1 Schéma du pipeline et tableau des sources.
+    - 2.2 Variable à expliquer.
+    - 2.3 Variable d'intérêt : l'accessibilité aux lycées (définition, rayon, effet de bord).
+    - 2.4 Contrôles et mauvais contrôles.
+    - 2.5 Encadré « choix et biais ».
+3.  **Trois aires, trois profils**
+    - 3.1 Pourquoi ces trois aires (Fig. 1).
+    - 3.2 Le gradient centre-périphérie des cadres (Fig. 2).
+    - 3.3 La géographie de l'accès aux lycées (Fig. 3).
+4.  **À position égale, l'accès aux lycées fait-il une différence ?**
+    - 4.1 Comparaison par anneaux (Fig. 4).
+    - 4.2 Comparaison entre communes contiguës (Fig. 5).
+    - 4.3 L'Ouest est-il différent ?
+    - 4.4 Qualité ou présence ? (Fig. 6)
+    - 4.5 Robustesse : tableau récapitulatif et indice de Moran.
+5.  **Les lycées face aux autres infrastructures** (Fig. 7).
+6.  **Conclusion**
+    - Tableau des hypothèses (confirmée, nuancée ou infirmée).
+    - Limites.
+    - Pistes : échelle IRIS, flux migratoires MIGCOM, temps de trajet.
+7.  **Annexes**
+    - Reproduire le projet.
+    - Dictionnaire des variables.
+    - Journal des décisions.
 
-**Règles de rédaction.**
-- Chaque figure a un titre qui énonce le message (et pas seulement le sujet), des axes nommés avec leurs unités et une source. Elle est suivie de deux ou trois phrases d'interprétation.
-- Aucune sortie brute (`describe()`, `head()`) n'est laissée sans commentaire dans le rapport final.
-- Le code long vit dans `src/`. Les cellules du rapport appellent des fonctions et ne copient-collent jamais de code d'une cellule à l'autre.
-- Taille visée : 7 figures principales, 1 tableau de robustesse, une lecture de 20 à 25 minutes.
+**Règles de rédaction.** - Chaque figure a un titre qui énonce le message (et pas seulement le sujet), des axes nommés avec leurs unités et une source. Elle est suivie de deux ou trois phrases d'interprétation. - Aucune sortie brute (`describe()`, `head()`) n'est laissée sans commentaire dans le rapport final. - Le code long vit dans `src/`. Les cellules du rapport appellent des fonctions et ne copient-collent jamais de code d'une cellule à l'autre. - Taille visée : 7 figures principales, 1 tableau de robustesse, une lecture de 20 à 25 minutes.
 
----
+------------------------------------------------------------------------
 
 ## 7. Organisation du dépôt
 
-```
+```         
 projet-cadres-lycees/
 ├── README.md                  # question, résultats clés, comment reproduire
 ├── PLAN.md                    # ce document
@@ -314,13 +335,14 @@ projet-cadres-lycees/
     └── dictionnaire_variables.md
 ```
 
-**Stockage des données.** Les données sont sur le S3 du SSPCloud, dans `s3://<utilisateur>/projet-cadres-lycees/`, avec trois sous-dossiers : `raw/` (fichiers sources inchangés), `interim/` (étapes intermédiaires) et `final/`. Les identifiants viennent des variables d'environnement injectées par le SSPCloud, jamais du code. Les fichiers de `final/` sont rendus publics en lecture pour que le correcteur puisse les charger.
+**Stockage des données.** Les données sont sur le S3 du SSPCloud, dans `s3://<bucket>/projet-cadres-lycees/`, avec trois sous-dossiers : `raw/` (fichiers sources inchangés), `interim/` (étapes intermédiaires) et `final/`. Les identifiants viennent des variables d'environnement injectées par le SSPCloud, jamais du code ; le nom du bucket vient de la variable `BUCKET_S3`. Si les identifiants AWS ou `BUCKET_S3` manquent, les données vont dans le dossier local `data/`, avec un avertissement (module `warnings`, jamais `print`) : un compte qui n'a pas défini `BUCKET_S3` ne fait donc pas échouer le code. - **Copie gelée.** Seules les sources qui changent sans prévenir (annuaire, IPS, IVAL, et DVF si elle est utilisée) sont gelées : une copie datée, avec son `sha256` dans `config.py`. Pour ces sources, il n'y a jamais de repli silencieux vers l'URL d'origine : une copie gelée absente, ou dont le `sha256` diffère, fait échouer le code bruyamment. Les zips de l'Insee, permanents, sont téléchargés à leur URL d'origine avec un contrôle du `sha256`. - **Lecture publique** de `raw/` et de `final/`, pour que le correcteur puisse les charger : **à confirmer par un `curl` anonyme, depuis l'extérieur du compte, avant de s'y appuyer** (le chemin d'URL qu'impose la publication peut changer l'arborescence). Repli si elle n'est pas possible : une release GitHub.
 
----
+------------------------------------------------------------------------
 
 ## 8. Conventions de travail
 
 ### 8.1 Git
+
 - La branche `main` est protégée : personne n'y pousse directement.
 - Une branche par tâche : `feat/collecte-lycees`, `fix/jointure-cog`, `docs/intro`.
 - Chaque branche est fusionnée via une pull request **relue par un autre membre**.
@@ -329,6 +351,7 @@ projet-cadres-lycees/
 - Jamais deux personnes sur `rapport.ipynb` en même temps : on prévient le groupe avant d'y toucher. `nb-clean` est installé en *pre-commit* pour retirer les sorties des notebooks.
 
 ### 8.2 Code
+
 - Python 3.13 et dépendances déclarées dans `pyproject.toml`. Gestion avec `uv`, comme dans l'environnement du cours.
 - Dépendances principales : `pandas`, `geopandas`, `pyarrow`, `duckdb`, `s3fs`, `requests`, `pynsee`, `cartiflette`, `libpysal`, `esda`, `matplotlib`, `plotly`, `folium`, `jupyter`, `nb-clean`, `pytest`.
 - Fonctions documentées (docstring), annotations de type et noms en français cohérents avec le dictionnaire des variables.
@@ -336,22 +359,20 @@ projet-cadres-lycees/
 - Les fonctions de collecte sont **idempotentes** : si le fichier brut est déjà sur S3, elles ne le retéléchargent pas.
 
 ### 8.3 Usage de l'IA générative (politique du cours)
+
 - Le cours autorise les assistants de code utilisés avec discernement, mais **interdit le vibe coding** et sanctionne les usages abusifs.
 - Chaque membre doit pouvoir expliquer, en soutenance, tout le code du dépôt, et en particulier `accessibilite.py` et `analyse.py`.
 - Les interprétations des résultats et le texte du rapport sont écrits par le groupe.
 
----
+------------------------------------------------------------------------
 
 ## 9. Calendrier, rôles et jalons
 
-**Rôles** (chacun est référent d'une dimension, tout le monde code partout) :
-- **R1, collecte** : étapes A, B, C, E et sources P2 ;
-- **R2, analyse spatiale** : étapes D et F, sections 5.2 à 5.7 ;
-- **R3, visualisation et rapport** : `figures.py`, Quarto, structure du rapport, pilotage de la semaine 6.
+**Rôles** (chacun est référent d'une dimension, tout le monde code partout) : - **R1, collecte** : étapes A, B, C, E et sources P2 ; - **R2, analyse spatiale** : étapes D et F, sections 5.2 à 5.7 ; - **R3, visualisation et rapport** : `figures.py`, Quarto, structure du rapport, pilotage de la semaine 6.
 
 | Semaine | R1 collecte | R2 analyse spatiale | R3 visualisation et rapport | Jalon de fin de semaine |
-|---------|-------------|---------------------|-----------------------------|-------------------------|
-| **S1** 13-18 oct | Confirmer les URL (sources 8 et 9) ; `stockage.py` ; collecte de l'annuaire par API | `geo.referentiel_communes` pour les 8 aires candidates | Dépôt, `pyproject`, pre-commit, Quarto ; squelette de `rapport.ipynb` | **Note de cadrage envoyée au chargé de TD** et choix des 3 aires (Fig. 1 provisoire) |
+|--------------|--------------|--------------|-----------------|--------------|
+| **S1** 13-18 oct | Confirmer les URL (sources 8 et 9) ; `stockage.py` ; collecte de l'annuaire par API ; collecte de l'AAV, livrée seule en premier ; collecte de l'IPS | `geo.referentiel_communes` pour les 8 aires candidates ; tableau de support (§2.2, §5.2), commité | Dépôt, `pyproject`, pre-commit, Quarto ; squelette de `rapport.ipynb` ; Fig. 1 provisoire | **Note de cadrage envoyée au chargé de TD** et choix des 3 aires journalisé (tableau de support commité, PR fusionnée, tag `plan-fige` posé après la fusion) ; une PR par membre, relue par un autre. Si S1 glisse : le squelette du notebook d'abord, puis les PR et le choix des aires, jusqu'au 20/10 |
 | **S2** 19-25 oct | Étapes B et C (cadres, lycées, IPS, IVAL) ; harmonisation COG | `accessibilite.py` et ses tests sur données jouets | Charte graphique ; Fig. 1 et 2 | Base communale v0 sur S3, avec les variables des étapes A à C |
 | **S3** 26 oct-1 nov | Étape E (DVF, densité) ; début des sources P2 | Étapes D et F sur données réelles ; anneaux | Fig. 3 (carte interactive) ; rédaction des sections 2 et 3 | Base v1 complète pour H1 à H3 ; premières comparaisons |
 | **S4** 2-8 nov | Sources P2 (gares, BPE, Data ES, APL) | H1 (anneaux et paires), H2, H3 | Fig. 4, 5 et 6 en version de travail ; rédaction de la section 4 | **Point de décision le 8 novembre** ; **premier test complet sur un SSPCloud neuf** |
@@ -359,18 +380,16 @@ projet-cadres-lycees/
 | **S6** 16-22 nov | README, dictionnaire, nettoyage du code | Relecture croisée de la méthode | Rédaction finale : résumé, conclusion, limites | **Gel du code le 22 novembre** |
 | **23-24 nov** | Tous | Tous | Tous | Exécution sur un SSPCloud neuf, publication Quarto, **rendu le 24 novembre** |
 
-**Point de décision du 8 novembre.** Il ne sert pas à changer de question.
-- Si H1 à H3 sont traitées et robustes, la semaine 5 couvre H4 en entier.
-- Sinon, la semaine 5 consolide d'abord H1 à H3, et H4 est réduite à deux infrastructures (gares et APL).
+**Point de décision du 8 novembre.** Il ne sert pas à changer de question. - Si H1 à H3 sont traitées et robustes, la semaine 5 couvre H4 en entier. - Sinon, la semaine 5 consolide d'abord H1 à H3, et H4 est réduite à deux infrastructures (gares et APL).
 
 **Soutenance (décembre-janvier).** Le support est construit autour des Fig. 1, 2, 4 et 7. Une répétition chronométrée est prévue, avec une liste de questions probables (pourquoi 5 km ? pourquoi pas de causalité ? que fait votre fonction d'accessibilité ?).
 
----
+------------------------------------------------------------------------
 
 ## 10. Risques et ordre de sacrifice
 
 | Risque | Probabilité | Parade |
-|--------|-------------|--------|
+|--------------------|--------------------------------|--------------------|
 | Le notebook ne tourne pas de bout en bout (moyenne impossible) | Moyenne | Test complet hebdomadaire dès la S4 ; gel du code le 22 novembre |
 | Codes communes non concordants entre sources | Élevée | Table de passage dès la S2 ; vérification par `assert` après chaque jointure |
 | Trop peu de lycées privés dans certaines couronnes | Moyenne | Indicateur d'accès par rayon ; critère (d) dans le choix des aires |
@@ -378,20 +397,18 @@ projet-cadres-lycees/
 | Fichiers DVF volumineux | Moyenne | Téléchargement par département, filtrage immédiat, Parquet |
 | Retard global | Moyenne | Ordre de sacrifice ci-dessous |
 
-**Ordre de sacrifice en cas de retard :**
-1. abandonner les bonus P3 ;
-2. réduire H4 à deux infrastructures ;
-3. abandonner l'indice de Moran (le mentionner dans les limites) ;
-4. passer à deux aires au lieu de trois.
+**Ordre de sacrifice en cas de retard :** 1. abandonner les bonus P3 ; 2. réduire H4 à deux infrastructures ; 3. abandonner l'indice de Moran (le mentionner dans les limites) ; 4. passer à deux aires au lieu de trois.
 
 **À ne jamais sacrifier** : la section 4.2 (paires contiguës), qui fait l'originalité du projet, et l'exécution complète du notebook.
 
----
+------------------------------------------------------------------------
 
 ## 11. Checklist de rendu (24 novembre)
 
 - [ ] `rapport.ipynb` s'exécute de bout en bout sans erreur sur un service SSPCloud **neuf**, en suivant uniquement le README.
-- [ ] Les données sont chargées depuis leurs URL d'origine ou depuis S3, avec des fichiers publics en lecture.
+- [ ] Les données sont chargées depuis les copies gelées publiques (sources mutables) ou depuis leur URL d'origine avec contrôle du `sha256` (zips de l'Insee).
+- [ ] Test « compte neuf » : un autre membre, sur son propre compte, sans définir `BUCKET_S3`, suit uniquement le README et exécute `rapport.ipynb` de bout en bout.
+- [ ] `construire_base()` s'exécute depuis le brut gelé en 30 minutes au plus.
 - [ ] Les dépendances s'installent en une commande (`uv sync`).
 - [ ] Chaque figure a un titre qui énonce le message, des axes nommés, une source et une interprétation.
 - [ ] Le résumé, le tableau des hypothèses et les limites sont présents.
@@ -400,58 +417,42 @@ projet-cadres-lycees/
 - [ ] Aucun secret (jeton, identifiant S3) n'apparaît dans le dépôt.
 - [ ] Le journal des décisions est à jour.
 
----
+------------------------------------------------------------------------
 
 ## 12. Instructions pour Claude Code : par où commencer
 
 ### 12.1 Cadre
-Tu assistes un groupe de trois étudiants sur un projet noté. Le cours interdit le *vibe coding*. Les étudiants doivent comprendre et pouvoir défendre chaque ligne. En conséquence :
-- Travaille **par petites étapes**, en suivant l'ordre des tickets ci-dessous. Une seule fonction ou un seul fichier à la fois.
-- **Explique** brièvement chaque choix non trivial (jointure, projection, filtre) dans ta réponse et dans les docstrings.
-- **N'invente jamais** un nom de colonne, un code ou une URL. Charge d'abord un échantillon, affiche le schéma (`df.columns`, `df.dtypes`, `df.head()`), puis écris le code. Si une URL est marquée « à confirmer », demande-la.
-- **Ne rédige pas** les interprétations de résultats ni le texte du rapport. Propose au plus une structure.
-- Respecte les choix fixés en section 2. Si tu penses qu'un choix doit changer, propose-le et attends la validation. Les étudiants l'ajouteront au journal des décisions.
-- Toutes les constantes vont dans `config.py`. Aucun secret dans le code.
-- Termine chaque ticket en indiquant les commandes pour tester ce qui a été fait, ainsi qu'un message de commit proposé.
 
-### 12.2 Tickets de démarrage (dans cet ordre)
+Tu assistes un groupe de trois étudiants sur un projet noté. Le cours interdit le *vibe coding*. Les étudiants doivent comprendre et pouvoir défendre chaque ligne. En conséquence : - Travaille **par petites étapes**, en suivant l'ordre des tickets ci-dessous. Une seule fonction ou un seul fichier à la fois. - **Explique** brièvement chaque choix non trivial (jointure, projection, filtre) dans ta réponse et dans les docstrings. - **N'invente jamais** un nom de colonne, un code ou une URL. Charge d'abord un échantillon, affiche le schéma (`df.columns`, `df.dtypes`, `df.head()`), puis écris le code. Si une URL est marquée « à confirmer », demande-la. - **Ne rédige pas** les interprétations de résultats ni le texte du rapport. Propose au plus une structure. - Respecte les choix fixés en section 2. Si tu penses qu'un choix doit changer, propose-le et attends la validation. Les étudiants l'ajouteront au journal des décisions. - Toutes les constantes vont dans `config.py`. Aucun secret dans le code. - Termine chaque ticket en indiquant les commandes pour tester ce qui a été fait, ainsi qu'un message de commit proposé.
 
-**T0. Squelette du dépôt.** Crée l'arborescence de la section 7 : `pyproject.toml` (dépendances de la section 8.2, Python 3.13, `cartiflette` installé depuis GitHub), `.gitignore`, `.pre-commit-config.yaml` avec nb-clean, un `config.py` minimal et un README squelette.
-*Fait quand* : `uv sync` fonctionne et `python -c "import cadres_lycees"` ne lève pas d'erreur.
+### 12.2 Tickets de démarrage
 
-**T1. `stockage.py`.** Fonctions `ecrire_parquet(df, chemin)` et `lire_parquet(chemin)`. Elles utilisent S3 via `s3fs` si les variables d'environnement AWS sont présentes, et un dossier local `data/` sinon. Ajoute aussi `existe(chemin)`.
-*Fait quand* : un aller-retour écriture puis lecture d'un petit DataFrame fonctionne en local.
+**Ordre d'exécution** (il diffère de la numérotation) : T0, T1, T2, puis T3 sur les 8 aires candidates (la collecte de l'AAV est livrée seule, en premier), T6 réduit à la collecte de l'IPS et à la figure, tableau de support, choix des 3 aires, puis T4 (semaine 2) et T5. - Le tableau de support (§2.2, §5.2) est un livrable commité dans `docs/`, et non un brouillon de `notebooks/exploration/`, avant que le choix des aires soit journalisé. T4 en reproduit les comptes pour les aires retenues par un `assert` du pipeline (§4, étape D). - Le choix des aires est journalisé (§13) dans une pull request fusionnée dans `main`, avant le premier commit de T5. La ligne de journal cite les comptes exacts du tableau et le hash de son commit. - Un tag annoté `plan-fige` sera posé après cette fusion, sur le commit fusionné dans `main`, puis poussé. L'historique n'est plus réécrit ensuite. - Une pull request par membre dès la semaine 1, relue par un autre membre.
 
-**T2. `collecte.annuaire_education(departements)`.** Télécharge via l'API Opendatasoft de data.education.gouv.fr (point d'export plutôt que pagination si possible), filtre sur les départements demandés et les lycées, stocke le brut dans `raw/`.
-- Commence par interroger l'API sur 10 lignes et affiche le schéma.
-- Repère avec les étudiants les champs de statut public/privé, de type d'établissement, de voies de formation et de coordonnées.
-*Fait quand* : un GeoDataFrame des lycées des départements de test est produit, avec le compte par statut affiché.
+**T0. Squelette du dépôt.** Crée l'arborescence de la section 7 : `pyproject.toml` (dépendances de la section 8.2, Python 3.13, `cartiflette` installé depuis GitHub), `.gitignore`, `.pre-commit-config.yaml` avec nb-clean, un `config.py` minimal et un README squelette. *Fait quand* : `uv sync` fonctionne et `python -c "import cadres_lycees"` ne lève pas d'erreur.
 
-**T3. `geo.referentiel_communes(aires)`.** Contours via `cartiflette` (vérifier la signature actuelle de `carti_download` dans la documentation du package), passage en Lambert 93, centroïdes, appartenance aux aires (source 8, URL à fournir par les étudiants), commune-centre et `dist_centre_km`.
-*Fait quand* : les vérifications de l'étape A (section 4) passent pour une aire de test.
+**T1. `stockage.py`.** Fonctions `ecrire_parquet(df, chemin)` et `lire_parquet(chemin)`. Elles utilisent S3 via `s3fs` si les variables d'environnement AWS sont présentes, et un dossier local `data/` sinon. Ajoute aussi `existe(chemin)`. *Fait quand* : un aller-retour écriture puis lecture d'un petit DataFrame fonctionne en local.
 
-**T4. `accessibilite.indicateurs(...)`.** Signature :
-`indicateurs(communes, points, rayons=(3, 5, 10), prefixe="lyc_prive", attribut=None, marge_km=10) -> DataFrame`.
-- Utilise une jointure spatiale par zone tampon (buffer) ou `sjoin_nearest`.
-- Inclut les points situés jusqu'à `marge_km` au-delà de l'aire.
-- Écris d'abord les tests (`tests/test_accessibilite.py`) sur une grille jouet dont les résultats se calculent à la main.
-*Fait quand* : `pytest` passe.
+**T2. `collecte.annuaire_education(departements)`.** Télécharge via l'API Opendatasoft de data.education.gouv.fr (point d'export plutôt que pagination si possible), filtre sur les départements demandés et les lycées, stocke le brut dans `raw/`. - Commence par interroger l'API sur 10 lignes et affiche le schéma. - Repère avec les étudiants les champs de statut public/privé, de type d'établissement, de voies de formation et de coordonnées. *Fait quand* : un GeoDataFrame des lycées des départements de test est produit, avec le compte par statut affiché.
 
-**T5. `collecte.series_historiques_csp()` et `nettoyage.part_cadres()`.** Télécharge le fichier, identifie avec les étudiants les colonnes des actifs de 25 à 54 ans et des cadres pour 2011 et 2022, puis harmonise vers le COG 2025.
-*Fait quand* : les vérifications de l'étape B passent.
+**T3. `geo.referentiel_communes(aires)`.** Contours via `cartiflette` (vérifier la signature actuelle de `carti_download` dans la documentation du package), passage en Lambert 93, centroïdes, appartenance aux aires (source 8, URL à fournir par les étudiants), commune-centre et `dist_centre_km`. *Fait quand* : les vérifications de l'étape A (section 4) passent pour une aire de test.
 
-**T6. Figure 1 provisoire (choix des aires).** Pour les 8 aires candidates : part de lycées privés sous contrat et écart d'IPS public/privé. Fonction dans `figures.py`, appelée depuis `rapport.ipynb`.
-*Fait quand* : la figure s'affiche et les étudiants peuvent trancher sur les aires.
+**T4. `accessibilite.indicateurs(...)`.** Signature : `indicateurs(communes, points, rayons=(3, 5, 10), prefixe="lyc_prive", attribut=None, marge_km=10) -> DataFrame`. - Utilise une jointure spatiale par zone tampon (buffer) ou `sjoin_nearest`. - Inclut les points situés jusqu'à `marge_km` au-delà de l'aire. - Écris d'abord les tests (`tests/test_accessibilite.py`) sur une grille jouet dont les résultats se calculent à la main. *Fait quand* : `pytest` passe.
+
+**T5. `collecte.series_historiques_csp()` et `nettoyage.part_cadres()`.** Télécharge le fichier, identifie avec les étudiants les colonnes des actifs de 25 à 54 ans et des cadres pour 2011 et 2022, puis harmonise vers le COG 2025. *Fait quand* : les vérifications de l'étape B passent.
+
+**T6. Figure 1 provisoire (choix des aires).** Pour les 8 aires candidates : part de lycées privés sous contrat et écart d'IPS public/privé. Fonction dans `figures.py`, appelée depuis `rapport.ipynb`. *Fait quand* : la figure s'affiche et les étudiants peuvent trancher sur les aires.
 
 ### 12.3 Prompt de démarrage suggéré
+
 > « Lis PLAN.md, en particulier les sections 2, 4, 7, 8 et 12. Commence par le ticket T0. Avant d'écrire du code, résume en cinq lignes ce que tu vas faire et attends ma validation. »
 
----
+------------------------------------------------------------------------
 
 ## 13. Journal des décisions
 
 | Date | Décision | Raison | Auteur |
-|------|----------|--------|--------|
+|-----------------|---------------------|-----------------|-----------------|
 | 13/10/2026 | Rayon principal 5 km ; lycées généraux, technologiques et polyvalents, privés sous contrat ; variable cible : cadres parmi les actifs de 25-54 ans | Fixé avant les résultats (section 2) | Groupe |
 | 13/10/2026 | Source 1 : conversion vers le COG 2025 par la table de passage annuelle 2025 ; dénominateur de la part de cadres = actifs occupés + chômeurs ayant déjà travaillé | Le fichier n'est pas livré en COG 2025 (RP2011 en COG 2013, RP2022 en COG 2024) et c'est la définition des actifs qu'il donne | Giulio |
 | 13/10/2026 | `cartiflette==0.4.0` depuis PyPI, version épinglée, au lieu de l'installation GitHub du §12.2 ; appels avec `year=2025` et `simplification=0`, puis `.to_crs(2154)` | L'installation GitHub donne un autre paquet, sans `carti_download` ; par défaut l'appel prend l'année courante, une simplification de 80 et ne publie qu'en EPSG:4326, alors que le §2.1 fixe le COG 2025 et le Lambert 93 | Giulio |
@@ -465,4 +466,8 @@ Tu assistes un groupe de trois étudiants sur un projet noté. Le cours interdit
 | 13/10/2026 | pytest et nb-clean (listés au §8.2 parmi les dépendances principales), ruff et pre-commit déclarés en dépendances de développement | Ils servent au développement et non à l'exécution du rapport | Giulio |
 | 13/10/2026 | Hooks pre-commit locaux (nb-clean et ruff) lancés avec `uv run` | Ils utilisent les versions de `uv.lock`, comme le reste du projet | Giulio |
 | 13/10/2026 | Python borné à `>=3.13,<3.14` | Les dépendances ont été résolues et testées sous Python 3.13 seulement | Giulio |
-| | | | |
+| 13/10/2026 | A1. `ival_moy_5km` : moyenne simple des `va_acces_2nde` des sessions 2012-2022 par lycée (au moins 5 sessions valides), puis moyenne des lycées du rayon pondérée par la moyenne de `presents_total` ; lycées de moins de 5 sessions comptés dans les `n_lyc_*` et exclus de l'IVAL ; stock = annuaire du 13/10/2026. H3 « non testable avec cette mesure » (ni confirmée ni infirmée) si la fiabilité de `ival_moy_5km` au niveau commune (corrélation des moyennes 2012-2017 et 2018-2022, corrigée par Spearman-Brown) est inférieure à 0,5. Moyenne 2012-2025 en robustesse ; variante « session 2025 seule » abandonnée | La valeur ajoutée d'un lycée est peu stable entre sessions et la rupture de 2024 touche surtout le privé (exploration du 13/10) ; décision prise avant tout calcul de part de cadres. Lu avant la décision, sans cadres : corrélation de 0,50 entre les moyennes 2012-2017 et 2018-2022 au niveau lycée (0,66 corrigée), 0,60 entre 2016 et 2017. Le seuil de 0,5 est une convention (la pente observée serait au plus la moitié de la vraie) | pilote, validé par Giulio |
+| 13/10/2026 | A2, sous réserve d'un `curl` anonyme réussi depuis l'extérieur du compte (à confirmer avant de s'y appuyer ; repli : release GitHub). Stockage local `data/` avec avertissement (`warnings`) si `BUCKET_S3` ou les identifiants AWS manquent (remplace la ligne du 13/10 sur le stockage) ; copie gelée datée, avec `sha256` dans `config.py`, des seules sources mutables (annuaire, IPS, IVAL, DVF si utilisée) ; jamais de repli silencieux vers l'URL d'origine pour ces sources (échec bruyant) ; zips de l'Insee à l'URL d'origine avec contrôle du `sha256` ; test « compte neuf » (un autre membre, sans `BUCKET_S3`, README seul) et `construire_base()` en 30 minutes au plus depuis le brut gelé ajoutés à la checklist §11 | Constaté le 13/10 : sur le SSPCloud les identifiants AWS sont définis mais pas `BUCKET_S3`, donc `stockage.existe` échoue ; un `export` en terminal ne se propage pas au noyau Jupyter ; l'annuaire change chaque jour et l'export IVAL est généré à la demande ; §11 | pilote, validé par Giulio |
+| 13/10/2026 | A3. Ordre d'exécution T0, T1, T2, T3 sur les 8 candidates (AAV en premier, seule), T6 réduit à l'IPS et à la figure, tableau de support commité (reproduit par un `assert` de T4), choix des 3 aires journalisé dans une PR fusionnée avant le premier commit de T5 ; T4 en semaine 2 ; tag annoté `plan-fige` à poser après cette fusion puis à pousser, sans réécriture d'historique ensuite ; une PR par membre en semaine 1, relue par un autre ; si S1 glisse, squelette du notebook d'abord, PR et choix des aires jusqu'au 20/10 ; valeurs de tous les critères journalisées au choix. La ligne du choix citera les comptes exacts et le hash du commit du tableau | Le choix des aires ne doit pas dépendre de la variable à expliquer ; la Fig. 1 et le tableau de support n'ont besoin ni de T4 ni de T5. Vu avant le tag : supports d'exposition des 8 candidates (communes exposées, cellules, paires), population par aire, stabilité et fiabilité de l'IVAL, et les comparaisons de dénominateur de `docs/exploration_sources.md` §9 (cadres sur occupés contre occupés et chômeurs), qui ne croisent pas l'exposition. Aucune comparaison de la part de cadres selon l'exposition n'a été faite | pilote, validé par Giulio |
+| 13/10/2026 | A4. H1 : estimation principale par les paires contiguës avec `d_dist_lyc_prive_min`, contrôlée par l'écart de distance au centre ; `d_n_lyc_prive_5km` secondaire ; anneaux en complément là où les cellules sont estimables (15 communes par groupe, fusion des anneaux, écart de distance au centre entre groupes de 2 km au plus, borne proposée à valider avant `plan-fige`) ; 5 km principal, 10 km rapporté à côté sans le remplacer ; verdict défini en chiffres au §5.3, « résultat nul établi » seulement avec des cellules estimables aux deux rayons ; H2 descriptive ; critères (e) et (f) ajoutés au choix des aires, règle de choix de la candidate de l'Ouest ; `assert` sur les départements de la marge de 10 km | Support de l'exposition mesuré le 13/10 sans donnée sur les cadres : communes exposées à 5 km, 15/183 (Rennes), 19/116 (Nantes), 20/527 (Toulouse) ; sur les 8 candidates, 4 cellules estimables sur 40 à 5 km (Lille 1, Lyon 3) et 11 sur 40 à 10 km avec la règle des 15 par groupe seule ; avec fusion et borne de 2 km, à 10 km Lyon 2, Nantes 1, Rennes 1, Strasbourg 1 et 0 ailleurs ; corrélation de 0,29 (Nantes), 0,44 (Toulouse) et 0,51 (Rennes) entre l'écart de `dist_lyc_prive_min` et l'écart de distance au centre en paires. Le seuil de 15 communes est hérité du §5.2 d'origine, écrit avant les données ; les critères (e) et (f), la borne et les règles de verdict ont été fixés après lecture de ces supports d'exposition et avant tout croisement avec la part de cadres | pilote, validé par Giulio |
+|  |  |  |  |
