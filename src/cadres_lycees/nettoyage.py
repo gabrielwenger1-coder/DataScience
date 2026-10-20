@@ -1,5 +1,7 @@
 """Nettoyage et jointures des sources : lycées avec leur aire, leur IPS et leur IVAL, population."""
 
+import itertools
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -156,10 +158,7 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     du référentiel, au grain des arrondissements à Lyon : la commune parente 69123 n'est jamais
     lue, ce qui évite de compter Lyon deux fois. Le résultat se joint par `code_commune`.
     """
-    serie = serie.set_index("CODGEO")
-    manquantes = sorted(set(referentiel["code_commune"]) - set(serie.index))
-    assert not manquantes, f"Communes absentes de la série historique : {manquantes}"
-    pop_superficie = serie.loc[referentiel["code_commune"]]
+    pop_superficie = _lignes_du_referentiel(serie, referentiel, ["P22_POP", "SUPERF"])
     assert pop_superficie.notna().all().all(), "Population ou superficie manquante."
     assert (pop_superficie["SUPERF"] > 0).all(), "Superficie nulle ou négative."
     # Une commune sans habitant aurait une densité nulle, et un logarithme infini
@@ -168,7 +167,45 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     densite = pop_superficie["P22_POP"] / pop_superficie["SUPERF"]
     return pd.DataFrame(
         {"pop_2022": pop_superficie["P22_POP"], "densite": densite, "log_densite": np.log(densite)}
-    ).rename_axis("code_commune")
+    )
+
+
+def croissance_population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFrame:
+    """Renvoie le taux de variation annuel moyen de la population entre deux recensements, en %.
+
+    Une ligne par commune du référentiel (`code_commune`), une colonne par période entre deux
+    recensements successifs de `config.COLONNES_POPULATION`, nommée par exemple « 1968-1975 ».
+    Le taux vaut (P_fin / P_début) ^ (1 / n) − 1, où n est l'écart entre les deux millésimes en
+    années. C'est une approximation, les recensements n'ayant pas lieu à date fixe : elle pèse
+    surtout sur 1999-2006 (6,8 ans entre le recensement de mars 1999 et la date de référence du
+    1er janvier 2006), dont les taux bougent d'au plus 0,23 point dans les 3 aires retenues.
+    `serie` vient de `collecte.serie_historique_rp2022`. Lyon y est lue au grain de ses
+    arrondissements, comme dans `population`.
+    """
+    colonnes = list(config.COLONNES_POPULATION.values())
+    populations = _lignes_du_referentiel(serie, referentiel, colonnes)
+    # Une population nulle ou manquante donnerait un taux infini ou manquant, sans erreur
+    assert (populations > 0).all().all(), "Population nulle ou manquante à un recensement."
+
+    croissance = pd.DataFrame(index=populations.index)
+    recensements = config.COLONNES_POPULATION.items()
+    for (debut, colonne_debut), (fin, colonne_fin) in itertools.pairwise(recensements):
+        ratio = populations[colonne_fin] / populations[colonne_debut]
+        croissance[f"{debut}-{fin}"] = (ratio ** (1 / (fin - debut)) - 1) * 100
+    return croissance
+
+
+def _lignes_du_referentiel(
+    serie: pd.DataFrame, referentiel: gpd.GeoDataFrame, colonnes: list[str]
+) -> pd.DataFrame:
+    """Renvoie `colonnes` de la série historique pour les communes du référentiel.
+
+    Le résultat est indexé par `code_commune`. Une commune absente de la série fait échouer.
+    """
+    serie = serie.set_index("CODGEO")
+    manquantes = sorted(set(referentiel["code_commune"]) - set(serie.index))
+    assert not manquantes, f"Communes absentes de la série historique : {manquantes}"
+    return serie.loc[referentiel["code_commune"], colonnes].rename_axis("code_commune")
 
 
 def ival_par_lycee(

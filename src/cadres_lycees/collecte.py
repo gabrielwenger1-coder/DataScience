@@ -110,9 +110,10 @@ def aav_2020() -> pd.DataFrame:
 
 
 def serie_historique_rp2022() -> pd.DataFrame:
-    """Renvoie la population et la superficie du recensement 2022, par commune ou arrondissement.
+    """Renvoie la population de chaque recensement et la superficie, par commune ou arrondissement.
 
-    Colonnes `CODGEO`, `P22_POP` et `SUPERF` (km²), en COG 2025. Les arrondissements de Lyon,
+    Colonnes `CODGEO`, `SUPERF` (km²) et les populations de 1968 à 2022 de
+    `config.COLONNES_POPULATION` (dont `P22_POP`), en COG 2025. Les arrondissements de Lyon,
     Marseille et Paris y figurent avec leur commune parente : sommer tout le fichier compterait
     ces villes deux fois. Le zip de l'Insee est permanent : il est lu à son URL d'origine.
     """
@@ -122,9 +123,8 @@ def serie_historique_rp2022() -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
         csv = io.BytesIO(archive.read(config.CSV_SERIE_RP2022))
     # Lu en nombre, "01001" deviendrait 1001 ; une colonne disparue fait échouer la lecture
-    serie = pd.read_csv(
-        csv, sep=";", usecols=["CODGEO", "P22_POP", "SUPERF"], dtype={"CODGEO": str}
-    )
+    colonnes = ["CODGEO", "SUPERF", *config.COLONNES_POPULATION.values()]
+    serie = pd.read_csv(csv, sep=";", usecols=colonnes, dtype={"CODGEO": str})
 
     assert len(serie) == config.NB_LIGNES_SERIE_RP2022, (
         f"{len(serie)} lignes dans la série historique, {config.NB_LIGNES_SERIE_RP2022} attendues."

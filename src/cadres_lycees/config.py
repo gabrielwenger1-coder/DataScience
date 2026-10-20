@@ -113,6 +113,20 @@ CHEMIN_RAW_SERIE_RP2022 = "raw/base-cc-serie-historique-2022_csv.zip"
 CSV_SERIE_RP2022 = "base-cc-serie-historique-2022.CSV"
 # Communes et arrondissements du COG 2025, Mayotte exceptée
 NB_LIGNES_SERIE_RP2022 = 34903
+# Population de chaque recensement dans la série historique, par année : « sans doubles
+# comptes » jusqu'en 1999 (D), municipale ensuite (P). L'Insee publie les deux dans cette série
+# pour en suivre l'évolution, sur la géographie du COG 2025
+COLONNES_POPULATION = {
+    1968: "D68_POP",
+    1975: "D75_POP",
+    1982: "D82_POP",
+    1990: "D90_POP",
+    1999: "D99_POP",
+    2006: "P06_POP",
+    2011: "P11_POP",
+    2016: "P16_POP",
+    2022: "P22_POP",
+}
 
 # Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
 # restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,
@@ -269,3 +283,12 @@ SIMPLIFICATION_CARTE_M = 50
 # gris laisse lire les couleurs des communes, le plan IGN donne les noms de lieux. CARTO, le fond
 # clair habituel, exige une clé depuis 2026 (constaté le 20/10)
 FONDS_CARTE = {"Fond gris (Esri)": "Esri.WorldGrayCanvas", "Plan IGN": "GeoportailFrance.plan"}
+
+# Carte de la croissance de la population : classes du taux de variation annuel moyen, en % par
+# an, par leurs bornes (basse incluse). De -0,2 à +0,2 % par an, soit environ 1,4 % en 7 ans, la
+# commune est dite stable. Palette divergente, gris presque blanc au milieu (un gris plus soutenu
+# se confondait avec le fond de carte) : rouges pour les baisses, violets pour les hausses. Le
+# saumon des baisses modérées a la teinte de l'orange du privé, en plus clair : sans confusion
+# possible tant qu'aucun lycée n'est tracé sur cette carte
+BORNES_CROISSANCE = (-1, -0.2, 0.2, 1, 2, 4)
+COULEURS_CROISSANCE = ("#ca0020", "#f4a582", "#f7f7f7", "#cbc9e2", "#9e9ac8", "#756bb1", "#54278f")
