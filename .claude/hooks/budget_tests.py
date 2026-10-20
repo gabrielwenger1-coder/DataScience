@@ -12,7 +12,12 @@ import sys
 from pathlib import Path
 
 DOSSIER_ESSAIS = "/tmp/essais"
-TESTS_PREVUS = ("tests/test_accessibilite.py", "tests/test_geo.py", "tests/conftest.py")
+TESTS_PREVUS = (
+    "tests/test_accessibilite.py",
+    "tests/test_geo.py",
+    "tests/test_analyse.py",
+    "tests/conftest.py",
+)
 MAX_FICHIERS = 3
 MAX_TESTS_PAR_FICHIER = 6
 FONCTION_DE_TEST = re.compile(r"^\s*(?:async\s+)?def test_\w+", re.MULTILINE)
