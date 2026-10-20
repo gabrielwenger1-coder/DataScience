@@ -206,11 +206,10 @@ def _libelles_distance() -> list[str]:
 def fig3(communes: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame, titre: str) -> folium.Map:
     """Fig. 3 : carte interactive de la distance au lycée privé sous contrat le plus proche.
 
-    `communes` vient de `geo.referentiel_communes`, complété par `accessibilite.indicateurs`
-    pour les lycées privés ; `lycees` vient de `nettoyage.lycees_geo`. Les communes sont colorées
-    par classe de distance, les lycées sont des points colorés par secteur. Les contours sont
-    simplifiés pour l'affichage seulement. `titre` est le message de la carte, écrit par le
-    groupe (PLAN §6) ; la légende en décrit le contenu.
+    `communes` et `lycees` sont la base et les lycées de `pipeline.construire_base`. Les communes
+    sont colorées par classe de distance, les lycées sont des points colorés par secteur. Les
+    contours sont simplifiés pour l'affichage seulement. `titre` est le message de la carte,
+    écrit par le groupe (PLAN §6) ; la légende en décrit le contenu.
     """
     assert communes.crs == config.CRS_CALCUL and lycees.crs == config.CRS_CALCUL, (
         f"Communes en {communes.crs}, lycées en {lycees.crs} : EPSG:{config.CRS_CALCUL} attendu."

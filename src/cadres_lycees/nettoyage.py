@@ -1,6 +1,7 @@
 """Nettoyage et jointures des sources : lycées avec leur aire, leur IPS et leur IVAL, population."""
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from cadres_lycees import config
@@ -145,9 +146,10 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
 
     `serie` vient de `collecte.serie_historique_rp2022`. `densite` est en habitants par km², avec
     `SUPERF`, la superficie de l'Insee, et non la surface des contours : même source que la
-    population (choix de l'étudiant du 20/10). Les communes sont celles du référentiel, au grain
-    des arrondissements à Lyon : la commune parente 69123 n'est jamais lue, ce qui évite de
-    compter Lyon deux fois. Le résultat se joint par `code_commune`, pas par position.
+    population (choix de l'étudiant du 20/10). `log_densite` est la forme sous laquelle la
+    densité sert de contrôle (A7), tant sa distribution est asymétrique. Les communes sont celles
+    du référentiel, au grain des arrondissements à Lyon : la commune parente 69123 n'est jamais
+    lue, ce qui évite de compter Lyon deux fois. Le résultat se joint par `code_commune`.
     """
     serie = serie.set_index("CODGEO")
     manquantes = sorted(set(referentiel["code_commune"]) - set(serie.index))
@@ -155,12 +157,12 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     pop_superficie = serie.loc[referentiel["code_commune"]]
     assert pop_superficie.notna().all().all(), "Population ou superficie manquante."
     assert (pop_superficie["SUPERF"] > 0).all(), "Superficie nulle ou négative."
+    # Une commune sans habitant aurait une densité nulle, et un logarithme infini
+    assert (pop_superficie["P22_POP"] > 0).all(), "Commune sans habitant."
 
+    densite = pop_superficie["P22_POP"] / pop_superficie["SUPERF"]
     return pd.DataFrame(
-        {
-            "pop_2022": pop_superficie["P22_POP"],
-            "densite": pop_superficie["P22_POP"] / pop_superficie["SUPERF"],
-        }
+        {"pop_2022": pop_superficie["P22_POP"], "densite": densite, "log_densite": np.log(densite)}
     ).rename_axis("code_commune")
 
 

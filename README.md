@@ -59,4 +59,4 @@ Les deux fonctions refusent d'écraser un chemin existant. Il faut ensuite repor
 - `src/cadres_lycees/` : le code du pipeline, un module par étape (voir PLAN §7).
 - `tests/` : les tests des calculs critiques (accessibilité et paires de communes contiguës).
 - `notebooks/exploration/` : brouillons individuels, jamais rendus.
-- `docs/` : le plan et les notes sur les sources de données ; le dictionnaire des variables viendra avec la base communale.
+- `docs/` : le plan, les notes sur les sources de données et le [dictionnaire des variables](docs/dictionnaire_variables.md) de la base communale (`pipeline.construire_base`).

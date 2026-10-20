@@ -10,6 +10,20 @@ CRS_CARTES = 4326
 RAYONS_KM = (3, 5, 10)
 RAYON_PRINCIPAL_KM = 5
 
+# Sorties de `pipeline.construire_base` (PLAN §4, étape G)
+CHEMIN_BASE = "final/base_communale.parquet"
+CHEMIN_PAIRES = "final/paires.parquet"
+# Écarts calculés dans les paires de communes contiguës : accès principal et secondaire (§5.3),
+# contrôles (§2.5, A7) et exposition 0/1 pour compter les paires de statut différent (§5.2, A6)
+VARIABLES_PAIRES = (
+    "dist_lyc_prive_min",
+    "n_lyc_prive_5km",
+    "dist_centre_km",
+    "log_densite",
+    "expose_lyc_prive_5km",
+    "expose_lyc_prive_10km",
+)
+
 # Aires d'attraction des villes 2020 candidates : nom -> code AAV2020 (chaîne, le zéro compte)
 AIRES_CANDIDATES = {
     "Rennes": "013",
