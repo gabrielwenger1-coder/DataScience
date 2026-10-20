@@ -1,5 +1,6 @@
 """Lecture et écriture de fichiers Parquet, sur S3 ou en local selon l'environnement."""
 
+import functools
 import io
 import os
 import warnings
@@ -12,6 +13,23 @@ from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
 
 from cadres_lycees import config
+
+
+@functools.cache
+def _avertir_stockage_local(manquantes: tuple[str, ...]) -> None:
+    """Prévient que les données vont dans le dossier local, une seule fois par session.
+
+    Le registre de `warnings` ne suffit pas : pandas et geopandas le remettent à zéro, et le
+    même message reviendrait à chaque lecture ou écriture. Seul l'avertissement est mémorisé :
+    le choix entre S3 et local est refait à chaque appel, une variable définie plus tard compte.
+    """
+    warnings.warn(
+        f"Variables d'environnement manquantes : {', '.join(manquantes)}. Les données sont "
+        f"lues et écrites dans le dossier local {config.DOSSIER_LOCAL} (voir README).",
+        # Quatre niveaux au-dessus : cette fonction, `_systeme_fichiers`, la fonction publique de
+        # ce module, puis le code qui l'appelle, que l'avertissement désigne
+        stacklevel=4,
+    )
 
 
 def _systeme_fichiers(chemin: str) -> tuple[AbstractFileSystem, str]:
@@ -28,12 +46,7 @@ def _systeme_fichiers(chemin: str) -> tuple[AbstractFileSystem, str]:
     if not manquantes:
         bucket = os.environ[config.VARIABLE_BUCKET_S3]
         return s3fs.S3FileSystem(), f"{bucket}/{config.PREFIXE_S3}/{chemin}"
-    # stacklevel=3 : la ligne affichée est l'appel du code appelant, pas nos fonctions internes
-    warnings.warn(
-        f"Variables d'environnement manquantes : {', '.join(manquantes)}. Les données sont "
-        f"lues et écrites dans le dossier local {config.DOSSIER_LOCAL} (voir README).",
-        stacklevel=3,
-    )
+    _avertir_stockage_local(tuple(manquantes))
     return LocalFileSystem(auto_mkdir=True), f"{config.DOSSIER_LOCAL}/{chemin}"
 
 

@@ -9,6 +9,7 @@ dependencies = [
     "duckdb>=1.5.6",
     "esda>=2.10.0",
     "folium>=0.20.0",
+    "fsspec>=2026.9.0",
     "geopandas>=1.2.0",
     "jupyter>=1.1.1",
     "libpysal>=4.15.0",
