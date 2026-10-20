@@ -8,108 +8,190 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 
 from cadres_lycees import config
 
 
-def fig1(profil: pd.DataFrame) -> Figure:
-    """Fig. 1 : pour chaque aire, la part de lycées privés sous contrat et l'IPS moyen par secteur.
+def fig1(profil: pd.DataFrame, lycees: gpd.GeoDataFrame, titre: str) -> Figure:
+    """Fig. 1 : pour chaque aire, la prévalence du privé sous contrat et la composition sociale.
 
-    `profil` vient de `analyse.profil_aires`. Les aires sont triées par part de privé, la plus
-    forte en haut. Le titre décrit la figure : le message est rédigé par le groupe.
+    À gauche, la part du privé en nombre de lycées et en candidats au bac ; à droite, l'IPS de
+    chaque lycée par secteur, avec la moyenne simple du secteur et l'écart privé moins public :
+    les deux dimensions du critère (b) du choix des aires (PLAN §2.2, §5.1). `profil` vient de
+    `analyse.profil_aires`, `lycees` de `nettoyage.lycees_geo` ; `titre` est le message de la
+    figure, écrit par le groupe (PLAN §6). Les aires sont triées par écart d'IPS, le plus fort
+    en haut.
     """
-    profil = profil.sort_values("part_prive")
-    positions = list(range(len(profil)))
-    couleur_public = config.COULEURS_SECTEURS["public"]
-    couleur_prive = config.COULEURS_SECTEURS["prive"]
+    profil = profil.sort_values("ecart_ips")
     texte = config.COULEUR_TEXTE
-
-    fig, (ax_part, ax_ips) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-
-    ax_part.barh(positions, profil["part_prive"] * 100, height=0.5, color=couleur_prive)
-    for position, ligne in enumerate(profil.itertuples()):
-        ax_part.text(
-            ligne.part_prive * 100 + 1,
-            position,
-            f"{ligne.part_prive:.0%} ({ligne.n_prive} sur {ligne.n_lycees})",
-            va="center",
-            fontsize=9,
-            color=texte,
-        )
-    ax_part.set_xlim(0, 100)
-    ax_part.set_xlabel("Part de lycées privés sous contrat (%)", color=texte)
-    ax_part.set_title("Poids du privé", loc="left", fontsize=11)
-    ax_part.set_yticks(positions)
-    ax_part.set_yticklabels(profil.index, color=texte)
-
-    for position, ligne in enumerate(profil.itertuples()):
-        ax_ips.plot(
-            [ligne.ips_public, ligne.ips_prive],
-            [position, position],
-            color=config.COULEUR_LIAISON,
-            zorder=1,
-        )
-        ax_ips.text(
-            max(ligne.ips_public, ligne.ips_prive) + 1.5,
-            position,
-            f"{ligne.ecart_ips:+.0f}  ({ligne.n_ips_prive} privés, {ligne.n_ips_public} publics)",
-            va="center",
-            fontsize=9,
-            color=texte,
-        )
-    ax_ips.scatter(
-        profil["ips_public"],
-        positions,
-        s=60,
-        color=couleur_public,
-        edgecolor="white",
-        zorder=2,
-        label="Lycées publics",
+    fig, (ax_part, ax_ips) = plt.subplots(
+        1, 2, figsize=(14, 6.2), sharey=True, gridspec_kw={"width_ratios": [1, 1.5]}
     )
-    ax_ips.scatter(
-        profil["ips_prive"],
-        positions,
-        s=60,
-        color=couleur_prive,
-        edgecolor="white",
-        zorder=2,
-        label="Lycées privés sous contrat",
-    )
-    bas = profil[["ips_public", "ips_prive"]].min().min()
-    haut = profil[["ips_public", "ips_prive"]].max().max()
-    ax_ips.set_xlim(bas - 3, haut + 32)
-    ax_ips.set_xlabel(
-        f"IPS moyen, voie générale et technologique, rentrée {config.RENTREE_IPS}", color=texte
-    )
-    ax_ips.set_title("IPS moyen par secteur et écart privé moins public", loc="left", fontsize=11)
-    ax_ips.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, frameon=False)
-
+    _panneau_prevalence(ax_part, profil)
+    _panneau_ips(ax_ips, profil, lycees)
     for ax in (ax_part, ax_ips):
         ax.spines[["top", "right"]].set_visible(False)
         ax.tick_params(colors=texte)
+        ax.grid(axis="x", color=config.COULEUR_GRILLE, linewidth=0.8)
+        ax.set_axisbelow(True)
 
-    fig.suptitle(
-        f"Les {len(profil)} aires candidates : part de lycées privés et IPS par secteur",
-        fontsize=13,
-    )
+    fig.suptitle(titre, fontsize=13, x=0.01, ha="left")
     n_lycees = profil["n_lycees"].sum()
     n_sans_ips = n_lycees - profil[["n_ips_public", "n_ips_prive"]].sum().sum()
     fig.text(
         0.01,
         0.01,
-        "Lycées généraux, technologiques et polyvalents, publics et privés sous contrat, situés "
-        "dans les communes de l'aire.\n"
-        f"IPS : moyenne simple des lycées qui en ont un ({n_sans_ips} lycées sur {n_lycees} n'en "
-        "ont pas).\n"
-        f"Sources : annuaire de l'éducation ({config.DATE_ANNUAIRE}), DEPP (IPS), Insee (aires "
-        "d'attraction des villes 2020), IGN.",
+        "Lycées généraux, technologiques et polyvalents, publics et privés sous contrat, des "
+        f"communes de l'aire (annuaire du {config.DATE_ANNUAIRE}). Part en lycées : tous les "
+        f"lycées ; part en candidats : présents au bac général et technologique, moyenne "
+        f"2012-2022,\npour les {profil['n_avec_candidats'].sum()} lycées sur {n_lycees} qui ont "
+        "une IVAL (ce n'est pas une part d'élèves au sens de la DEPP). IPS : voie générale et "
+        f"technologique, rentrée {config.RENTREE_IPS}, moyenne simple des lycées, "
+        f"{n_sans_ips} lycées sans IPS.\nSources : annuaire de l'éducation, DEPP (IPS, IVAL), "
+        "Insee (aires d'attraction des villes 2020), IGN.",
         fontsize=8,
         color=texte,
     )
-    fig.tight_layout(rect=(0, 0.1, 1, 0.95))
+    fig.tight_layout(rect=(0, 0.07, 1, 0.95))
     # Fermée, la figure n'est affichée qu'une fois par un notebook, avec sa valeur de retour
     plt.close(fig)
     return fig
+
+
+def _panneau_prevalence(ax: plt.Axes, profil: pd.DataFrame) -> None:
+    """Fig. 1, gauche : part du privé en lycées et en candidats au bac, une ligne par aire."""
+    positions = range(len(profil))
+    couleur_prive = config.COULEURS_SECTEURS["prive"]
+    en_lycees = profil["part_prive"] * 100
+    en_candidats = profil["part_prive_candidats"] * 100
+    ax.hlines(positions, en_lycees, en_candidats, color=config.COULEUR_LIAISON, zorder=1)
+    ax.scatter(
+        en_lycees,
+        positions,
+        s=55,
+        color=couleur_prive,
+        edgecolor="white",
+        zorder=2,
+        label="en nombre de lycées",
+    )
+    ax.scatter(
+        en_candidats,
+        positions,
+        s=55,
+        marker="D",
+        facecolor="white",
+        edgecolor=couleur_prive,
+        linewidth=1.5,
+        zorder=2,
+        label="en candidats au bac",
+    )
+    ax.set_xlim(0, max(en_lycees.max(), en_candidats.max()) + 8)
+    ax.set_xlabel("Part du privé sous contrat (%)", color=config.COULEUR_TEXTE)
+    ax.set_title("Prévalence du privé", loc="left", fontsize=11)
+    ax.set_yticks(positions)
+    ax.set_yticklabels(
+        [
+            f"{aire}\n{ligne.n_lycees} lycées, {ligne.n_avec_candidats} avec IVAL"
+            for aire, ligne in zip(profil.index, profil.itertuples(), strict=True)
+        ],
+        color=config.COULEUR_TEXTE,
+        fontsize=9,
+    )
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=1, frameon=False)
+
+
+def _panneau_ips(ax: plt.Axes, profil: pd.DataFrame, lycees: gpd.GeoDataFrame) -> None:
+    """Fig. 1, droite : IPS de chaque lycée par secteur, moyenne du secteur et écart, par aire."""
+    rang = {aire: position for position, aire in enumerate(profil.index)}
+    avec_ips = lycees[lycees["aire"].notna() & lycees["ips"].notna()]
+    assert set(avec_ips["aire"]) == set(profil.index), (
+        "Les lycées et le profil n'ont pas les mêmes aires."
+    )
+    # Chaque secteur sur sa propre bande, de part et d'autre de la ligne de l'aire. Dans une
+    # bande, les points sont décalés selon le rang de leur IPS, sur quelques niveaux : des lycées
+    # d'IPS proches se recouvrent moins, et la figure est la même à chaque exécution. La hauteur
+    # d'un point dans sa bande n'a pas de sens
+    ecart_bande, nb_niveaux, pas_niveau = 0.17, 5, 0.03
+    for secteur, bande in (("public", ecart_bande), ("prive", -ecart_bande)):
+        du_secteur = avec_ips[avec_ips["secteur"] == secteur]
+        niveau = du_secteur.groupby("aire")["ips"].rank(method="first") % nb_niveaux
+        hauteur = du_secteur["aire"].map(rang) + bande + (niveau - nb_niveaux // 2) * pas_niveau
+        couleur = config.COULEURS_SECTEURS[secteur]
+        ax.scatter(
+            du_secteur["ips"],
+            hauteur,
+            s=14,
+            color=couleur,
+            alpha=0.55,
+            linewidth=0,
+            label=f"Lycée, secteur {config.LIBELLES_SECTEURS[secteur]}",
+        )
+        # La moyenne tracée est celle du profil, d'où vient aussi l'écart écrit à droite
+        ax.scatter(
+            profil[f"ips_{secteur}"],
+            [rang[aire] + bande for aire in profil.index],
+            marker="|",
+            s=260,
+            linewidth=2.5,
+            color=couleur,
+            zorder=3,
+        )
+
+    bord = avec_ips["ips"].max() + 10
+    for aire, ligne in zip(profil.index, profil.itertuples(), strict=True):
+        ax.text(
+            bord,
+            rang[aire] + 0.1,
+            f"{ligne.ecart_ips:+.0f}",
+            ha="right",
+            fontsize=10,
+            color=config.COULEUR_TEXTE,
+            fontweight="bold",
+        )
+        ax.text(
+            bord,
+            rang[aire] - 0.1,
+            f"{ligne.n_ips_prive} / {ligne.n_ips_public}",
+            ha="right",
+            va="top",
+            fontsize=7,
+            color=config.COULEUR_TEXTE,
+        )
+    ax.text(
+        bord,
+        len(profil) - 0.45,
+        "écart privé − public\nlycées privés / publics",
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color=config.COULEUR_TEXTE,
+    )
+    ax.set_xlim(avec_ips["ips"].min() - 3, bord + 1)
+    ax.set_xlabel(
+        f"IPS de chaque lycée, voie générale et technologique, rentrée {config.RENTREE_IPS}",
+        color=config.COULEUR_TEXTE,
+    )
+    ax.set_title("Composition sociale des lycées", loc="left", fontsize=11)
+    trait_moyenne = Line2D(
+        [],
+        [],
+        color=config.COULEUR_TEXTE,
+        marker="|",
+        linestyle="",
+        markersize=12,
+        markeredgewidth=2.5,
+        label="moyenne simple du secteur",
+    )
+    points, libelles = ax.get_legend_handles_labels()
+    ax.legend(
+        [*points, trait_moyenne],
+        [*libelles, trait_moyenne.get_label()],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=2,
+        frameon=False,
+    )
 
 
 def _libelles_distance() -> list[str]:

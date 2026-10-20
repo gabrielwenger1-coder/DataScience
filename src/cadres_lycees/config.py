@@ -200,6 +200,8 @@ SECTEURS_IPS = {"public": "public", "privé sous contrat": "prive"}
 COULEURS_SECTEURS = {"public": "#2a78d6", "prive": "#eb6834"}
 COULEUR_TEXTE = "#52514e"
 COULEUR_LIAISON = "#c3c2b7"
+# Grille des axes, très claire pour rester en arrière-plan
+COULEUR_GRILLE = "#ececea"
 # Date de l'annuaire de l'éducation affichée dans la source des figures
 DATE_ANNUAIRE = "13/10/2026"
 # Secteurs écrits en toutes lettres dans les légendes et les infobulles
