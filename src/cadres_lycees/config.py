@@ -133,11 +133,12 @@ RENTREE_IPS = "2025-2026"
 COLONNE_IPS = "ips_voie_gt"
 # Types de lycée de l'IPS retenus : les lycées professionnels (LP) sortent du périmètre du §2.4
 TYPES_LYCEES_IPS = ("LEGT", "LPO")
-# Lycées de l'IPS situés dans les communes des 8 aires candidates mais absents de `lycees_geo`
+# Lycées de l'IPS situés dans les communes des 8 aires candidates mais absents des lycées retenus
 # (annuaire du 13/10/2026, pour la rentrée et la mesure ci-dessus : en changer impose de revoir
-# cette liste) : trois privés de Saint-Sébastien-sur-Loire fusionnés dans l'annuaire
-# sous l'UAI 0443088T, Averroès (hors contrat dans l'annuaire, sous contrat dans l'IPS), un lycée
-# agricole privé (Genech), un lycée climatique (nature 310) et une section agricole publique
+# cette liste) : trois privés de Saint-Sébastien-sur-Loire fusionnés dans l'annuaire sous l'UAI
+# 0443088T, Averroès (hors contrat dans l'annuaire, sous contrat dans l'IPS), un lycée agricole
+# privé (Genech), un lycée climatique (nature 310) et une section agricole publique. Seuls ceux
+# des aires étudiées sont attendus : la liste vaut pour toute partie des 8 candidates
 UAI_IPS_NON_RETENUS = (
     "0352867B",
     "0380097Z",
@@ -178,7 +179,8 @@ UAI_IVAL_RATTACHES = {
 # mais ne sont pas des lycées retenus (après rattachement) : lycées professionnels (0330018R,
 # 0590125R), lycée climatique (0380097Z), lycée agricole (0596281G), hors contrat dans
 # l'annuaire (0596681S Averroès, 0694086S Al Kindi) et Sainte-Claire (0593113N), absent de
-# l'annuaire. En changer d'aires ou de règle impose de revoir cette liste
+# l'annuaire. Seuls ceux des aires étudiées sont attendus : la liste vaut pour toute partie des
+# 8 candidates. Changer de règle impose de la revoir
 UAI_IVAL_NON_RETENUS = (
     "0330018R",
     "0380097Z",

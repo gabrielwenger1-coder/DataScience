@@ -121,14 +121,14 @@ def _libelles_distance() -> list[str]:
     return libelles
 
 
-def fig3(communes: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame) -> folium.Map:
+def fig3(communes: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame, titre: str) -> folium.Map:
     """Fig. 3 : carte interactive de la distance au lycée privé sous contrat le plus proche.
 
     `communes` vient de `geo.referentiel_communes`, complété par `accessibilite.indicateurs`
     pour les lycées privés ; `lycees` vient de `nettoyage.lycees_geo`. Les communes sont colorées
     par classe de distance, les lycées sont des points colorés par secteur. Les contours sont
-    simplifiés pour l'affichage seulement. Le titre décrit la carte : le message est rédigé par
-    le groupe.
+    simplifiés pour l'affichage seulement. `titre` est le message de la carte, écrit par le
+    groupe (PLAN §6) ; la légende en décrit le contenu.
     """
     assert communes.crs == config.CRS_CALCUL and lycees.crs == config.CRS_CALCUL, (
         f"Communes en {communes.crs}, lycées en {lycees.crs} : EPSG:{config.CRS_CALCUL} attendu."
@@ -246,7 +246,6 @@ def fig3(communes: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame) -> folium.Map:
         f"Lycée, secteur {config.LIBELLES_SECTEURS[secteur]}</div>"
         for secteur in ("prive", "public")
     )
-    aires = ", ".join(sorted(communes["aire"].unique()))
     note = (
         f"{config.RAYON_PRINCIPAL_KM} km ou moins : au moins un lycée privé sous contrat dans "
         "le rayon principal. Distance à vol d'oiseau depuis le centroïde de la commune, "
@@ -263,9 +262,16 @@ def fig3(communes: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame) -> folium.Map:
     legende = (
         '<div style="position:fixed;bottom:28px;left:12px;z-index:1000;background:white;'
         f'padding:8px;font:11px sans-serif;color:{config.COULEUR_TEXTE};width:250px">'
-        f"<b>{aires} : distance au lycée privé sous contrat le plus proche</b>"
+        "<b>Distance au lycée privé sous contrat le plus proche</b>"
         f"{classes}{points}"
         f"<p style='font-size:10px'>{note}</p><p style='font-size:10px'>{source}</p></div>"
     )
     carte.get_root().html.add_child(folium.Element(legende))
+    # À droite des boutons de zoom, en haut à gauche de la carte
+    entete = (
+        '<div style="position:fixed;top:10px;left:56px;z-index:1000;background:white;'
+        f'padding:6px 10px;font:bold 14px sans-serif;color:{config.COULEUR_TEXTE};max-width:60%">'
+        f"{html.escape(titre)}</div>"
+    )
+    carte.get_root().html.add_child(folium.Element(entete))
     return carte

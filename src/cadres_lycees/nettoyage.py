@@ -14,13 +14,21 @@ def lycees_geo(
 ) -> gpd.GeoDataFrame:
     """Renvoie les lycées de l'annuaire avec leur aire, leur secteur, leur IPS et leur IVAL.
 
-    Un lycée est rattaché à une aire par le code de sa commune dans l'annuaire, qui nomme les
-    arrondissements de Lyon (693xx) comme le référentiel. `aire` est manquante pour un lycée
-    situé hors des aires : il compte quand même dans l'accessibilité des communes proches.
-    L'IPS est celui de la rentrée et de la mesure choisies dans `config` ; il reste manquant pour
-    un lycée sans IPS, une valeur manquante ne se remplace pas. `sessions_ival` vient de
-    `collecte.ival_lycees` ; `ival` et `poids_ival` (voir `ival_par_lycee`) manquent pour un
-    lycée qui ne remplit pas la règle A1. Un UAI multi-sites compte pour un lycée.
+    Une ligne par lycée, en Lambert 93, avec `uai`, `nom_lycee`, `code_commune`, `secteur`,
+    `aire` (manquante hors des aires), `ips`, `ival`, `poids_ival` et `geometry`. `annuaire`,
+    `ips` et `sessions_ival` viennent de `collecte`, `referentiel` de `geo.referentiel_communes`.
+    """
+    lycees = _un_lycee_par_uai(annuaire)
+    lycees = _ajouter_aire(lycees, referentiel)
+    lycees = _ajouter_ips(lycees, ips, referentiel)
+    return _ajouter_ival(lycees, sessions_ival, referentiel)
+
+
+def _un_lycee_par_uai(annuaire: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Renvoie une ligne par UAI de l'annuaire filtré, renommée, avec son secteur, en Lambert 93.
+
+    La sélection des lycées est faite par `collecte.annuaire_education`. Un UAI multi-sites
+    compte pour un lycée. Tous les lycées doivent avoir des coordonnées.
     """
     # Un UAI multi-sites occupe plusieurs lignes, avec la même commune et les mêmes coordonnées
     nb_communes = annuaire.groupby("identifiant_de_l_etablissement")["code_commune"].nunique()
@@ -40,11 +48,20 @@ def lycees_geo(
     assert not sans_position.any(), (
         f"Lycées sans coordonnées : {lycees.loc[sans_position, 'uai'].tolist()}."
     )
+    return lycees
 
-    # L'aire vient du code commune. On vérifie que la position dit la même chose (code dans le
-    # référentiel si et seulement si position dans une aire) : une commune fusionnée sous un
-    # nouveau code laisserait sinon son lycée sans aire, sans bruit. La position des lycées hors
-    # des aires n'est pas contrôlée
+
+def _ajouter_aire(lycees: gpd.GeoDataFrame, referentiel: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Ajoute l'aire du lycée, d'après le code de sa commune.
+
+    L'annuaire nomme les arrondissements de Lyon (693xx) comme le référentiel. Un lycée hors des
+    aires garde une aire manquante : il compte quand même dans l'accessibilité des communes
+    proches.
+    """
+    # On vérifie que la position dit la même chose que le code (code dans le référentiel si et
+    # seulement si position dans une aire) : une commune fusionnée sous un nouveau code
+    # laisserait sinon son lycée sans aire, sans bruit. La position des lycées hors des aires
+    # n'est pas contrôlée
     zone = referentiel.geometry.union_all()
     commune_connue = lycees["code_commune"].isin(referentiel["code_commune"])
     dans_une_aire = lycees.geometry.within(zone)
@@ -56,7 +73,16 @@ def lycees_geo(
         referentiel[["code_commune", "aire"]], on="code_commune", how="left", validate="many_to_one"
     )
     assert set(lycees["aire"].dropna()) == set(referentiel["aire"]), "Une aire n'a aucun lycée."
+    return lycees
 
+
+def _ajouter_ips(
+    lycees: gpd.GeoDataFrame, ips: pd.DataFrame, referentiel: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
+    """Ajoute l'IPS de la rentrée et de la mesure choisies dans `config`.
+
+    Il reste manquant pour un lycée sans IPS : une valeur manquante ne se remplace pas.
+    """
     ips_rentree = ips[
         (ips["rentree_scolaire"] == config.RENTREE_IPS)
         & ips["type_de_lycee"].isin(config.TYPES_LYCEES_IPS)
@@ -64,19 +90,20 @@ def lycees_geo(
     assert not ips_rentree.empty, f"Pas d'IPS pour la rentrée {config.RENTREE_IPS}."
     ips_rentree["ips"] = pd.to_numeric(ips_rentree[config.COLONNE_IPS])
     ips_rentree["secteur_ips"] = ips_rentree["secteur"].map(config.SECTEURS_IPS)
+    # Un UAI mal recopié dans la liste ne serait jamais attendu ci-dessous, donc jamais vu
+    absents = sorted(set(config.UAI_IPS_NON_RETENUS) - set(ips_rentree["uai"]))
+    assert not absents, f"UAI de config.UAI_IPS_NON_RETENUS absents de l'IPS : {absents}."
 
     # Des lycées de l'IPS situés dans les aires manquent aux lycées des aires, car l'annuaire les
-    # filtre, les regroupe sous un autre UAI ou les place ailleurs : on exige que la liste soit
-    # celle de `config`
-    ips_des_aires = ips_rentree[
-        ips_rentree["code_insee_de_la_commune"].isin(referentiel["code_commune"])
-        & ips_rentree["ips"].notna()
-    ]
-    lycees_des_aires = set(lycees.loc[lycees["aire"].notna(), "uai"])
-    non_retenus = sorted(set(ips_des_aires["uai"]) - lycees_des_aires)
-    assert non_retenus == sorted(config.UAI_IPS_NON_RETENUS), (
-        f"Lycées de l'IPS absents de la liste : {non_retenus}, attendus : "
-        f"{sorted(config.UAI_IPS_NON_RETENUS)} (config.UAI_IPS_NON_RETENUS)."
+    # filtre, les regroupe sous un autre UAI ou les place ailleurs : on exige que ce soient ceux
+    # de `config` situés dans les aires étudiées
+    dans_les_aires = ips_rentree["code_insee_de_la_commune"].isin(referentiel["code_commune"])
+    uai_des_aires = set(ips_rentree.loc[dans_les_aires & ips_rentree["ips"].notna(), "uai"])
+    non_retenus = sorted(uai_des_aires - set(lycees.loc[lycees["aire"].notna(), "uai"]))
+    attendus = sorted(uai_des_aires & set(config.UAI_IPS_NON_RETENUS))
+    assert non_retenus == attendus, (
+        f"Lycées de l'IPS absents des lycées des aires : {non_retenus}, attendus : {attendus} "
+        "(config.UAI_IPS_NON_RETENUS)."
     )
 
     lycees = lycees.merge(
@@ -86,18 +113,29 @@ def lycees_geo(
     secteur_different = lycees["secteur_ips"].notna() & (lycees["secteur"] != lycees["secteur_ips"])
     uai_differents = lycees.loc[secteur_different, "uai"].tolist()
     assert not uai_differents, f"Secteur différent dans l'annuaire et l'IPS : {uai_differents}."
-    lycees = lycees.drop(columns="secteur_ips")
+    return lycees.drop(columns="secteur_ips")
 
-    # Comme pour l'IPS : des lycées de l'IVAL situés dans les aires ne sont pas des lycées
-    # retenus (nature, contrat, fermeture) ; on exige que la liste soit celle de `config`, pour
-    # qu'un lycée publié sous un autre UAI ne perde pas son IVAL sans erreur
+
+def _ajouter_ival(
+    lycees: gpd.GeoDataFrame, sessions_ival: pd.DataFrame, referentiel: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
+    """Ajoute `ival` et `poids_ival` (voir `ival_par_lycee`) ; manquants hors de la règle A1."""
     ival = ival_par_lycee(sessions_ival)
+    # Un UAI mal recopié dans la liste ne serait jamais attendu ci-dessous, donc jamais vu
+    absents = sorted(set(config.UAI_IVAL_NON_RETENUS) - set(ival.index))
+    assert not absents, f"UAI de config.UAI_IVAL_NON_RETENUS absents de l'IVAL : {absents}."
+    # Comme pour l'IPS : des lycées de l'IVAL situés dans les aires ne sont pas des lycées
+    # retenus (nature, contrat, fermeture) ; on exige que ce soient ceux de `config` situés dans
+    # les aires étudiées, pour qu'un lycée publié sous un autre UAI ne perde pas son IVAL sans
+    # erreur
     dans_les_aires = sessions_ival["code_commune"].isin(referentiel["code_commune"])
     uai_des_aires = set(sessions_ival.loc[dans_les_aires, "uai"].replace(config.UAI_IVAL_RATTACHES))
-    non_retenus = sorted((uai_des_aires & set(ival.index)) - set(lycees["uai"]))
-    assert non_retenus == sorted(config.UAI_IVAL_NON_RETENUS), (
-        f"Lycées de l'IVAL absents de la liste : {non_retenus}, attendus : "
-        f"{sorted(config.UAI_IVAL_NON_RETENUS)} (config.UAI_IVAL_NON_RETENUS)."
+    uai_avec_ival = uai_des_aires & set(ival.index)
+    non_retenus = sorted(uai_avec_ival - set(lycees["uai"]))
+    attendus = sorted(uai_avec_ival & set(config.UAI_IVAL_NON_RETENUS))
+    assert non_retenus == attendus, (
+        f"Lycées de l'IVAL absents des lycées retenus : {non_retenus}, attendus : {attendus} "
+        "(config.UAI_IVAL_NON_RETENUS)."
     )
     return lycees.merge(ival, left_on="uai", right_index=True, how="left", validate="many_to_one")
 
