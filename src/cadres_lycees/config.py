@@ -54,6 +54,8 @@ AIRES_CANDIDATES = {
     "Lille": "004",
     "Strasbourg": "010",
 }
+# Aires retenues le 20/10 parmi les candidates, sur le tableau de support (PLAN §2.2, §13)
+AIRES_RETENUES = {aire: AIRES_CANDIDATES[aire] for aire in ("Nantes", "Lyon", "Strasbourg")}
 
 # Stockage (PLAN §7) : le S3 du SSPCloud si les identifiants AWS et le nom du bucket sont dans
 # l'environnement, sinon le dossier data/ à la racine du dépôt (ignoré par git), avec un

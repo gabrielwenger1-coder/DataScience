@@ -16,11 +16,11 @@ Dernier point de pilotage : 2026-10-20
 
 ## Actions prioritaires
 
-Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusionné) ; repli local fait, `curl` anonyme et test sur un autre compte non faits ; Fig. 1 et squelette faits, ni tableau de support, ni choix des aires, ni tag. A5 à A7 appliqués le 20/10 (journal §13). A8 rejeté par l'étudiant le 20/10. A9 et A10 appliqués le 20/10, avec la mise en forme seule du §0, du §2.2 et du §12.1. A11 appliqué le 20/10 : part de cadres tirée de « Évolution et structure » (même définition et mêmes valeurs que les séries historiques, arrondissements de Lyon natifs, COG 2025) ; critère (f) mesuré, coût de Lyon nul pour la variable à expliquer.
+Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusionné) ; repli local fait, `curl` anonyme et test sur un autre compte non faits ; Fig. 1 et squelette faits, ni tableau de support, ni choix des aires, ni tag. A5 à A7 appliqués le 20/10 (journal §13). A8 rejeté par l'étudiant le 20/10. A9 et A10 appliqués le 20/10, avec la mise en forme seule du §0, du §2.2 et du §12.1. A11 appliqué le 20/10 : part de cadres tirée de « Évolution et structure » (même définition et mêmes valeurs que les séries historiques, arrondissements de Lyon natifs, COG 2025) ; critère (f) mesuré, coût de Lyon nul pour la variable à expliquer. Choix des aires fait le 20/10, avant l'échéance du 22/10 : Nantes, Lyon, Strasbourg, journalisé avec le hash du tableau (`0583839`) ; A12 (alignements §4, §5.2, §7, §8.2) appliqué. Au 20/10 : 36 commits d'un seul auteur, rien de fusionné dans `main`, branches non poussées sauf `chore/harness-claude`.
 
-1. Aujourd'hui : geler l'annuaire du 13/10, l'IPS, l'IVAL et les contours (nom daté, `sha256` dans `config.py`, plus d'appel direct à l'API dans le chemin du rapport), les publier (`curl` anonyme, sinon release GitHub), rejouer le compte neuf.
+1. Copies gelées publiées (S3 public, release `donnees-20261020`) : `curl` anonyme depuis l'extérieur du compte et compte neuf rejoué, à confirmer.
 2. D'ici au 22/10, Git à trois : branches poussées, PR vers `main` dans l'ordre, relues par un autre membre. PR de R2 (fusion, tableau de support, `tests/test_analyse.py`) ; PR de R3 (section IA du README), livrable daté du 22/10 suivi ici. Si R2 n'a pas ouvert sa PR le 22/10 : Giulio écrit la fusion, R2 la relit avec des commentaires visibles.
-3. Choix des aires le 22/10 (tableau calculé une seule fois, coût de Lyon nul selon A11, PR, tag au plus tard le 24/10), listes d'UAI régénérées pour 3 aires, fiabilité de l'IVAL journalisée, estimateur et verdict de H3 fixés en `/pilotage` ; T5 du 23 au 25/10.
+3. Au plus tard le 24/10 : PR du tableau relue par R2, fusion `--no-ff` (`0583839` doit rester dans `main`), tag annoté `plan-fige` poussé. Avant le premier commit de T5, en `/pilotage` : listes d'UAI des 3 aires, fiabilité de l'IVAL journalisée, estimateur et verdict de H3, lecture du critère « concordantes » de H1 sans cellule estimable à 5 km (Nantes, Strasbourg). T5 du 23 au 25/10.
 
 ## Points ouverts
 
@@ -29,6 +29,8 @@ Suivi du 13/10 : Git à trois non fait (24 commits, un seul auteur, rien de fusi
 - Fig. 1 : part du privé comparable dans l'Ouest, à Lyon et à Lille ; seul l'écart d'IPS distingue l'Ouest. H2 et le critère (b) se défendent par la sélectivité.
 - Mise en forme Quarto encore cassée au §10 et au §12.2 ; « proposition A5 » de `docs/exploration_sources.md` §2 à renommer.
 - Prénoms des membres au §9 ; sort de `CLAUDE.md` ; jeton GitHub du reflog à révoquer.
+- Strasbourg fragile : 9 lycées privés (critère d), écart d'IPS sur 8, 11 communes exposées et 26 paires de statut différent à 5 km (pente secondaire).
+- À T5 : `d_part_cadres` (§4 F, §5.3) ou `d_part_cadres_2022` (règle `d_<v>`). §11 « toute dépendance est importée » : `tabulate` et `python-calamine` servent sans import direct.
 
 ## Désaccords ouverts entre pilote et correcteur
 
