@@ -121,7 +121,12 @@ def _ajouter_ival(
     lycees: gpd.GeoDataFrame, sessions_ival: pd.DataFrame, referentiel: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
     """Ajoute `ival` et `poids_ival` (voir `ival_par_lycee`) ; manquants hors de la règle A1."""
-    ival = ival_par_lycee(sessions_ival)
+    ival = ival_par_lycee(
+        sessions_ival,
+        config.PREMIERE_SESSION_IVAL,
+        config.DERNIERE_SESSION_IVAL,
+        config.NB_SESSIONS_MIN_IVAL,
+    )
     # Un UAI mal recopié dans la liste ne serait jamais attendu ci-dessous, donc jamais vu
     absents = sorted(set(config.UAI_IVAL_NON_RETENUS) - set(ival.index))
     assert not absents, f"UAI de config.UAI_IVAL_NON_RETENUS absents de l'IVAL : {absents}."
@@ -166,15 +171,19 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     ).rename_axis("code_commune")
 
 
-def ival_par_lycee(sessions_ival: pd.DataFrame) -> pd.DataFrame:
-    """Renvoie l'IVAL de chaque lycée selon la règle A1 (PLAN §2.4), indexée par `uai`.
+def ival_par_lycee(
+    sessions_ival: pd.DataFrame, premiere: int, derniere: int, nb_sessions_min: int
+) -> pd.DataFrame:
+    """Renvoie l'IVAL de chaque lycée sur les sessions `premiere` à `derniere`, indexée par `uai`.
 
-    `ival` est la moyenne simple des `va_acces_2nde` des sessions 2012 à 2022, pour les lycées
-    qui en ont au moins 5 où la valeur ajoutée est renseignée ; `poids_ival` est la moyenne de
-    `presents_total` sur ces sessions. Les autres lycées sont absents du résultat. Les sessions
-    des UAI de `config.UAI_IVAL_RATTACHES` sont rattachées à l'UAI de l'annuaire : quand
-    plusieurs sites publient la même session, elle vaut la valeur ajoutée moyenne des sites
-    renseignés, pondérée par leurs présents, et ses présents sont ceux de ces sites additionnés.
+    `ival` est la moyenne simple des `va_acces_2nde` de ces sessions, pour les lycées qui en ont
+    au moins `nb_sessions_min` où la valeur ajoutée est renseignée ; `poids_ival` est la moyenne
+    de `presents_total` sur ces sessions. Les autres lycées sont absents du résultat. La règle A1
+    (PLAN §2.4) correspond aux valeurs de `config` ; le test de fiabilité (§3.2) l'applique à
+    chaque moitié. Les sessions des UAI de
+    `config.UAI_IVAL_RATTACHES` sont rattachées à l'UAI de l'annuaire : quand plusieurs sites
+    publient la même session, elle vaut la valeur ajoutée moyenne des sites renseignés, pondérée
+    par leurs présents, et ses présents sont ceux de ces sites additionnés.
     """
     rattaches = config.UAI_IVAL_RATTACHES
     assert set(rattaches) <= set(sessions_ival["uai"]), "Un UAI rattaché manque à l'IVAL."
@@ -187,9 +196,7 @@ def ival_par_lycee(sessions_ival: pd.DataFrame) -> pd.DataFrame:
             "presents_total": pd.to_numeric(sessions_ival["presents_total"]),
         }
     )
-    dans_la_periode = sessions["annee"].between(
-        config.PREMIERE_SESSION_IVAL, config.DERNIERE_SESSION_IVAL
-    )
+    dans_la_periode = sessions["annee"].between(premiere, derniere)
     valides = sessions[dans_la_periode & sessions["va_acces_2nde"].notna()].copy()
     assert (valides["presents_total"] > 0).all(), "Session valide sans présents."
 
@@ -203,5 +210,5 @@ def ival_par_lycee(sessions_ival: pd.DataFrame) -> pd.DataFrame:
         poids_ival=("presents_total", "mean"),
         nb_sessions=("va", "size"),
     )
-    retenus = par_lycee[par_lycee["nb_sessions"] >= config.NB_SESSIONS_MIN_IVAL]
+    retenus = par_lycee[par_lycee["nb_sessions"] >= nb_sessions_min]
     return retenus[["ival", "poids_ival"]]

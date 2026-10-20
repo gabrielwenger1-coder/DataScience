@@ -152,18 +152,21 @@ def ival_lycees() -> pd.DataFrame:
     return ival
 
 
-def geler_contours(code_aav: str, chemin: str) -> str:
-    """Écrit à `chemin` les contours d'une aire téléchargés par cartiflette et renvoie leur sha256.
+def geler_contours(chemin: str, valeur: str, maille: str, filtre: str) -> str:
+    """Écrit à `chemin` des contours téléchargés par cartiflette et renvoie leur sha256.
 
-    Produit une copie gelée : celles du 13/10/2026 viennent de là. Le rapport ne l'appelle pas,
-    il lit la copie gelée (`contours_aire`). Le sha256 fige une sérialisation (versions de
-    geopandas et de pyarrow comprises), pas seulement des données. Mode d'emploi dans le README.
+    `valeur`, `maille` et `filtre` sont les arguments `values`, `borders` et `filter_by` de
+    `carti_download` : un code d'aire, "COMMUNE_ARRONDISSEMENT" et "AIRE_ATTRACTION_VILLES" pour
+    les contours d'une aire ; "France", "DEPARTEMENT" et "FRANCE_ENTIERE" pour les départements.
+    Produit une copie gelée : celles du 13/10 et du 20/10/2026 viennent de là. Le rapport ne
+    l'appelle pas, il lit la copie gelée. Le sha256 fige une sérialisation (versions de geopandas
+    et de pyarrow comprises), pas seulement des données. Mode d'emploi dans le README.
     """
     assert not stockage.existe(chemin), f"{chemin} existe déjà : choisir un autre chemin daté."
     contours = carti_download(
-        values=code_aav,
-        borders="COMMUNE_ARRONDISSEMENT",
-        filter_by="AIRE_ATTRACTION_VILLES",
+        values=valeur,
+        borders=maille,
+        filter_by=filtre,
         year=config.ANNEE_COG,
         simplification=config.SIMPLIFICATION_CONTOURS,
     )
@@ -181,6 +184,20 @@ def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
     chemin = config.CHEMIN_RAW_CONTOURS.format(aav=code_aav)
     contenu = stockage.copie_controlee(
         _copies_publiques(chemin), chemin, config.SHA256_CONTOURS[code_aav]
+    )
+    return gpd.read_parquet(io.BytesIO(contenu))
+
+
+def contours_departements() -> gpd.GeoDataFrame:
+    """Renvoie les contours des départements, DOM compris, en WGS84 (COG 2025).
+
+    Leur union donne le contour de la France métropolitaine (`geo.distance_contour_national_km`).
+    Lu dans la copie gelée du 20/10/2026.
+    """
+    contenu = stockage.copie_controlee(
+        _copies_publiques(config.CHEMIN_RAW_DEPARTEMENTS),
+        config.CHEMIN_RAW_DEPARTEMENTS,
+        config.SHA256_DEPARTEMENTS,
     )
     return gpd.read_parquet(io.BytesIO(contenu))
 

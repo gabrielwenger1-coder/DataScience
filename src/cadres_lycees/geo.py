@@ -111,3 +111,28 @@ def paires_contigues(communes: gpd.GeoDataFrame, variables: list[str]) -> pd.Dat
         valeur_j = paires["code_commune_j"].map(valeurs[variable])
         paires[f"d_{variable}"] = valeur_i - valeur_j
     return paires
+
+
+def distance_contour_national_km(communes: gpd.GeoDataFrame) -> pd.Series:
+    """Renvoie la distance en km du centroïde de chaque commune au contour de la métropole.
+
+    Le contour est celui de l'union des départements métropolitains : il suit la frontière
+    terrestre et le littoral. Il ne mesure donc la distance à la frontière que loin des côtes,
+    ce qui est le cas de Lille et de Strasbourg, les seules aires où elle sert (A6). Le résultat
+    est indexé par `code_commune`.
+    """
+    departements = collecte.contours_departements().to_crs(config.CRS_CALCUL)
+    # Les codes à deux caractères sont ceux de la métropole, Corse comprise ("2A", "2B")
+    metropole = departements[departements["INSEE_DEP"].str.len() == 2]
+    assert len(metropole) == config.NB_DEPARTEMENTS_METROPOLE, (
+        f"{len(metropole)} départements de métropole, {config.NB_DEPARTEMENTS_METROPOLE} attendus."
+    )
+    contour = metropole.geometry.union_all().boundary
+    centroides = communes.set_index("code_commune").set_geometry("centroide")["centroide"]
+    # La distance à une géométrie seule ne vérifie pas la projection : on le fait ici
+    assert centroides.crs == config.CRS_CALCUL, (
+        f"Centroïdes en {centroides.crs}, pas en Lambert 93."
+    )
+    distances = (centroides.distance(contour) / 1000).rename("dist_contour_national_km")
+    assert distances.notna().all(), "Distance au contour national manquante."
+    return distances

@@ -134,7 +134,7 @@ Ce ne sont pas des changements de choix fixés avant les résultats. Appliquées
   - 110 des 201 communes de l'aire de Lille et 55 des 268 de Strasbourg ont leur centroïde à moins de 10 km de la frontière (59 et 24 à moins de 5 km).
   - Le lycée privé français le plus proche est plus loin que la frontière pour 57 communes de Lille et 75 de Strasbourg : leur distance est peut-être surestimée.
   - Communes non exposées dont le disque franchit la frontière : à 10 km, Lille 9 sur 28 et Strasbourg 35 sur 215 ; à 5 km, Lille 33 sur 125 et Strasbourg 21 sur 257. Elles sont surtout dans les anneaux de 0 à 10 km, que la comparaison par anneaux ne protège donc pas.
-  - Pour une colonne « frontière », ne retenir que la frontière terrestre : le contour national est maritime à Bordeaux (21 et 50 communes à moins de 5 et 10 km).
+  - Distance à la frontière : `geo.distance_contour_national_km` mesure la distance au contour de l'union des départements métropolitains (copie gelée du 20/10), qui suit aussi le littoral. Elle ne vaut distance à la frontière que loin des côtes : elle sert donc pour Lille et Strasbourg seulement (A6), où le point le plus proche est toujours sur la frontière terrestre ; à Bordeaux, le contour est maritime (21 et 50 communes à moins de 5 et 10 km).
   - À soumettre au pilote, puisque cela touche le choix des aires (§2.2).
 - **Accessibilité, vérifié le 20/10 avec `accessibilite.indicateurs`** (annuaire du 13/10, aucune donnée sur les cadres) :
   - communes exposées (au moins un lycée privé sous contrat dans le rayon), à 5 km / 10 km : Bordeaux 27 / 93, Grenoble 24 / 65, Lille 76 / 173, Lyon 93 / 242, Nantes 19 / 64, Rennes 15 / 52, Strasbourg 11 / 53, Toulouse 20 / 81. `dist_lyc_prive_min` va jusqu'à 43,4 km ;

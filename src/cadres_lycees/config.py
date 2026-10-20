@@ -123,6 +123,12 @@ SHA256_CONTOURS = {
     "013": "c846f8d895d3121435037f5c04054a9e2275bb95e2de1791cae61498550b4cec",
     "014": "a1d13c20cc9565de3e2b3bb78b8d020076bae7c2a94ac2648d7aa96aa0699357",
 }
+# Contours des départements, copie gelée du 20/10/2026 : leur union donne le contour de la France
+# métropolitaine, dont on mesure la distance pour Lille et Strasbourg (frontière, A6)
+CHEMIN_RAW_DEPARTEMENTS = "raw/contours_departements_20261020.parquet"
+SHA256_DEPARTEMENTS = "a6e4d3b3a7657f61b8fe9b710efa5f50c0cab76cde0d522f4cfd4adfdbe405ca"
+# Départements de métropole, Corse comprise (2A et 2B)
+NB_DEPARTEMENTS_METROPOLE = 96
 # Pôle ou couronne d'après `CATEAAV2020`. Les codes 13 (pôle secondaire, aucun dans les 8 aires
 # candidates) et 30 (hors aire) n'y sont pas : ils feraient échouer `geo.referentiel_communes`
 POLE_COURONNE_AAV = {"11": "pole", "12": "pole", "20": "couronne"}
@@ -177,6 +183,10 @@ NB_LIGNES_IVAL = 32485
 PREMIERE_SESSION_IVAL = 2012
 DERNIERE_SESSION_IVAL = 2022
 NB_SESSIONS_MIN_IVAL = 5
+# Test de fiabilité de l'IVAL (PLAN §3.2, A7) : les deux moitiés de la période et le nombre minimal
+# de sessions valides dans chacune
+MOITIES_IVAL = ((2012, 2017), (2018, 2022))
+NB_SESSIONS_MIN_MOITIE = 3
 # Lycées publiés dans l'IVAL sous un autre UAI que celui de l'annuaire du 13/10/2026 : leurs
 # sessions sont rattachées à l'UAI de l'annuaire, avec la même règle dans toutes les aires (choix
 # du 20/10). Les trois lycées privés de Saint-Sébastien-sur-Loire, regroupés en 2026 sous un

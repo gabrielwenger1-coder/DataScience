@@ -40,6 +40,7 @@ Les sources qui changent sans prévenir sont lues dans une copie datée, jamais 
 | `annuaire_education_20261013.parquet` | 13/10/2026 | https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/parquet | `2c493f152bc8fc682aa8b1f063392015941bcff36bae2ae59a4d1a1e6334e94a` |
 | `ips_lycees_20261013.csv` | 13/10/2026 | https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-lycees-ap2023/exports/csv | `31b2aafd8fb4597608c55f8f78f7144444a350df795111a651fb5222ee9c8aa7` |
 | `ival_lycees_gt_20261020.csv` | 20/10/2026 | https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-indicateurs-de-resultat-des-lycees-gt_v2/exports/csv | `6ab77b391e3405f5157bb942d4548d5f1cfbacd94e76dd52b93db9b370de8658` |
+| `contours_departements_20261020.parquet` | 20/10/2026 | `cartiflette==0.4.0`, départements de France entière, COG 2025, sans simplification | `a6e4d3b3a7657f61b8fe9b710efa5f50c0cab76cde0d522f4cfd4adfdbe405ca` |
 | `contours_aav_<code>_20261013.parquet` | 13/10/2026 | `cartiflette==0.4.0`, contours des communes et arrondissements par aire, COG 2025, sans simplification | `002` : `5fc255ef5f92c540c5037f793c15c24007642c7cdce256a1e4f47d516176f231`<br>`004` : `6ff1e4bc0675ab567b7af3eb506774c0740ab855c5f333c66ee6b8fe1eb89982`<br>`005` : `c42afd4910a9a6907c54e2f8d476b8a4b6db3630bf9ffdff7b41cedf8a3b2c6e`<br>`006` : `6e0cb9a94a69887fd123a2d57c49068aa25b207da9541813652c00f1b2930c28`<br>`008` : `54665ed725b9ae364166d6dc76cd09b71b8e42397916e6fe564d8f0308786e59`<br>`010` : `454d27768198bb48be5882987f3aa36f88902add34bf443dff0cd37cc8be7790`<br>`013` : `c846f8d895d3121435037f5c04054a9e2275bb95e2de1791cae61498550b4cec`<br>`014` : `a1d13c20cc9565de3e2b3bb78b8d020076bae7c2a94ac2648d7aa96aa0699357` |
 
 Les fichiers de l'Insee (zonage en aires d'attraction, série historique du recensement 2022) sont permanents : ils sont lus à leur URL d'origine, avec le même contrôle du `sha256` (voir `src/cadres_lycees/config.py`).
@@ -50,7 +51,18 @@ Les fichiers de l'Insee (zonage en aires d'attraction, série historique du rece
 from cadres_lycees import collecte
 
 collecte.geler_annuaire("raw/annuaire_education_AAAAMMJJ.parquet")  # renvoie le sha256
-collecte.geler_contours("013", "raw/contours_aav_013_AAAAMMJJ.parquet")
+collecte.geler_contours(
+    "raw/contours_aav_013_AAAAMMJJ.parquet",
+    valeur="013",
+    maille="COMMUNE_ARRONDISSEMENT",
+    filtre="AIRE_ATTRACTION_VILLES",
+)
+collecte.geler_contours(
+    "raw/contours_departements_AAAAMMJJ.parquet",
+    valeur="France",
+    maille="DEPARTEMENT",
+    filtre="FRANCE_ENTIERE",
+)
 ```
 
 Les deux fonctions refusent d'écraser un chemin existant. Il faut ensuite reporter le chemin et le `sha256` dans `config.py`, publier le fichier aux deux adresses ci-dessus et mettre à jour ce tableau.
