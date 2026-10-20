@@ -48,6 +48,7 @@ Les fichiers de l'Insee (zonage en aires d'attraction, série historique du rece
 
 ```python
 from cadres_lycees import collecte
+
 collecte.geler_annuaire("raw/annuaire_education_AAAAMMJJ.parquet")  # renvoie le sha256
 collecte.geler_contours("013", "raw/contours_aav_013_AAAAMMJJ.parquet")
 ```
