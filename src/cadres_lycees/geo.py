@@ -1,4 +1,4 @@
-"""Géographie des communes : référentiel des aires, centroïdes et distances en Lambert 93."""
+"""Géographie des communes : référentiel des aires, distances en Lambert 93, paires contiguës."""
 
 import geopandas as gpd
 import pandas as pd
@@ -70,3 +70,41 @@ def referentiel_communes(aires: dict[str, str]) -> gpd.GeoDataFrame:
     geometrie_vide = referentiel.geometry.isna() | referentiel.geometry.is_empty
     assert not geometrie_vide.any(), "Des communes n'ont pas de contour."
     return referentiel
+
+
+def paires_contigues(communes: gpd.GeoDataFrame, variables: list[str]) -> pd.DataFrame:
+    """Renvoie une ligne par paire de communes contiguës d'une même aire, avec leurs écarts.
+
+    Contiguïté « Queen » : deux communes sont voisines si leurs contours se touchent, par un
+    bord ou par un seul point, comme pour l'indice de Moran (PLAN §5.6). Une paire n'apparaît
+    qu'une fois, avec `code_commune_i` < `code_commune_j`, et `d_<v>` vaut la valeur de i moins
+    celle de j pour chaque variable v de `variables` (manquant si l'une des deux manque). Ce sens
+    suit l'ordre des codes, il est donc arbitraire : seules une pente estimée sans constante ou
+    des paires symétrisées, (i, j) et (j, i), n'en dépendent pas. Une commune sans voisine dans
+    son aire fait échouer.
+    """
+    assert communes["code_commune"].is_unique, "Des codes communes sont en double."
+    contours = communes[["code_commune", "aire", "geometry"]]
+    # `intersects` garde les contours qui partagent un bord ou un point, et aussi ceux qui se
+    # recouvrent très peu, ce que `touches` écarterait
+    contacts = gpd.sjoin(contours, contours, predicate="intersects", lsuffix="i", rsuffix="j")
+    # Chaque contact sort deux fois, (i, j) puis (j, i), et chaque commune se touche elle-même
+    une_fois = contacts["code_commune_i"] < contacts["code_commune_j"]
+    meme_aire = contacts["aire_i"] == contacts["aire_j"]
+    paires = contacts.loc[une_fois & meme_aire, ["code_commune_i", "code_commune_j", "aire_i"]]
+    paires = paires.rename(columns={"aire_i": "aire"}).reset_index(drop=True)
+    assert not paires.duplicated(["code_commune_i", "code_commune_j"]).any(), (
+        "Paire en double (PLAN §4 F)."
+    )
+    # Une commune sans voisine dans son aire disparaîtrait des paires sans aucun signal
+    dans_une_paire = set(paires["code_commune_i"]) | set(paires["code_commune_j"])
+    isolees = sorted(set(communes["code_commune"]) - dans_une_paire)
+    assert not isolees, f"Communes sans voisine dans leur aire : {isolees}."
+
+    # Les valeurs sont lues par code commune, jamais par position
+    valeurs = communes.set_index("code_commune")[variables]
+    for variable in variables:
+        valeur_i = paires["code_commune_i"].map(valeurs[variable])
+        valeur_j = paires["code_commune_j"].map(valeurs[variable])
+        paires[f"d_{variable}"] = valeur_i - valeur_j
+    return paires
