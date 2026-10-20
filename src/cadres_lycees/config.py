@@ -9,10 +9,6 @@ CRS_CARTES = 4326
 # Rayons d'accessibilité en km : 5 est le rayon principal, 3 et 10 servent en robustesse
 RAYONS_KM = (3, 5, 10)
 
-# Les lycées jusqu'à 10 km au-delà de la limite de l'aire comptent, sinon les communes du bord
-# paraîtraient mal desservies
-MARGE_KM = 10
-
 # Aires d'attraction des villes 2020 candidates : nom -> code AAV2020 (chaîne, le zéro compte)
 AIRES_CANDIDATES = {
     "Rennes": "013",
@@ -64,6 +60,11 @@ CATEGORIES_AAV = ("11", "12", "13", "20", "30")
 NATURES_LYCEES = (300, 301, 302, 306)
 # `code_type_contrat_prive` du privé sous contrat : 30 association (toutes classes), 31 (partie)
 CONTRATS_PRIVE_RETENUS = ("30", "31")
+# Lycées de métropole retenus par le type, la nature et la tutelle, mais dont l'annuaire du
+# 13/10/2026 ne donne pas le statut public ou privé : leur secteur est inconnu, ils sont écartés.
+# 0271911F (Eure, ouvert en 2024) n'est pas non plus dans l'IPS ; il est à 188 km de l'aire
+# candidate la plus proche
+UAI_SANS_STATUT = ("0271911F",)
 
 # Contours communaux (source 7), via cartiflette. Le COG de référence est celui de 2025
 # (PLAN §2.1) : sans `year`, cartiflette prendrait l'année courante ; sans `simplification=0`, il

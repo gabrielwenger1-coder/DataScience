@@ -9,10 +9,11 @@ from cadres_lycees import config
 def lycees_geo(
     annuaire: gpd.GeoDataFrame, ips: pd.DataFrame, referentiel: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
-    """Renvoie les lycées des communes du référentiel, avec leur aire, leur secteur et leur IPS.
+    """Renvoie les lycées de l'annuaire avec leur aire, leur secteur et leur IPS.
 
     Un lycée est rattaché à une aire par le code de sa commune dans l'annuaire, qui nomme les
-    arrondissements de Lyon (693xx) comme le référentiel. Les lycées hors des aires sont écartés.
+    arrondissements de Lyon (693xx) comme le référentiel. `aire` est manquante pour un lycée
+    situé hors des aires : il compte quand même dans l'accessibilité des communes proches.
     L'IPS est celui de la rentrée et de la mesure choisies dans `config` ; il reste manquant pour
     un lycée sans IPS, une valeur manquante ne se remplace pas. Un UAI multi-sites compte pour un
     lycée.
@@ -29,26 +30,27 @@ def lycees_geo(
     lycees["secteur"] = lycees["statut_public_prive"].map(config.SECTEURS)
     lycees = lycees[["uai", "code_commune", "secteur", "geometry"]].to_crs(config.CRS_CALCUL)
 
-    geolocalise = ~(lycees.geometry.isna() | lycees.geometry.is_empty)
-    assert geolocalise.mean() > 0.98, "Plus de 2 % des lycées n'ont pas de coordonnées."
+    # Tous les lycées servent aux distances : un lycée sans position les fausserait sans bruit
+    sans_position = lycees.geometry.isna() | lycees.geometry.is_empty
+    assert not sans_position.any(), (
+        f"Lycées sans coordonnées : {lycees.loc[sans_position, 'uai'].tolist()}."
+    )
 
-    # L'aire vient du code commune. On vérifie que la position dit la même chose : une commune
-    # fusionnée sous un nouveau code ferait disparaître son lycée de la jointure sans bruit
+    # L'aire vient du code commune. On vérifie que la position dit la même chose (code dans le
+    # référentiel si et seulement si position dans une aire) : une commune fusionnée sous un
+    # nouveau code laisserait sinon son lycée sans aire, sans bruit. La position des lycées hors
+    # des aires n'est pas contrôlée
     zone = referentiel.geometry.union_all()
     commune_connue = lycees["code_commune"].isin(referentiel["code_commune"])
     dans_une_aire = lycees.geometry.within(zone)
-    desaccord = geolocalise & (commune_connue != dans_une_aire)
+    desaccord = commune_connue != dans_une_aire
     assert not desaccord.any(), (
         f"Code commune et position en désaccord pour {lycees.loc[desaccord, 'uai'].tolist()}."
     )
-    lycees = lycees.merge(referentiel[["code_commune", "aire"]], on="code_commune", how="inner")
-    assert set(lycees["aire"]) == set(referentiel["aire"]), "Une aire n'a aucun lycée."
-    # Les 2 % tolérés plus haut portent sur tous les lycées demandés : un lycée d'une aire sans
-    # coordonnées resterait sans position et fausserait les distances
-    sans_position = lycees["geometry"].isna() | lycees["geometry"].is_empty
-    assert not sans_position.any(), (
-        f"Lycées d'une aire sans coordonnées : {lycees.loc[sans_position, 'uai'].tolist()}."
+    lycees = lycees.merge(
+        referentiel[["code_commune", "aire"]], on="code_commune", how="left", validate="many_to_one"
     )
+    assert set(lycees["aire"].dropna()) == set(referentiel["aire"]), "Une aire n'a aucun lycée."
 
     ips_rentree = ips[
         (ips["rentree_scolaire"] == config.RENTREE_IPS)
@@ -58,21 +60,23 @@ def lycees_geo(
     ips_rentree["ips"] = pd.to_numeric(ips_rentree[config.COLONNE_IPS])
     ips_rentree["secteur_ips"] = ips_rentree["secteur"].map(config.SECTEURS_IPS)
 
-    # Des lycées de l'IPS situés dans les aires manquent à notre liste, car l'annuaire les filtre
-    # ou les regroupe sous un autre UAI : on exige que la liste soit celle de `config`
+    # Des lycées de l'IPS situés dans les aires manquent aux lycées des aires, car l'annuaire les
+    # filtre, les regroupe sous un autre UAI ou les place ailleurs : on exige que la liste soit
+    # celle de `config`
     ips_des_aires = ips_rentree[
         ips_rentree["code_insee_de_la_commune"].isin(referentiel["code_commune"])
         & ips_rentree["ips"].notna()
     ]
-    non_retenus = sorted(set(ips_des_aires["uai"]) - set(lycees["uai"]))
+    lycees_des_aires = set(lycees.loc[lycees["aire"].notna(), "uai"])
+    non_retenus = sorted(set(ips_des_aires["uai"]) - lycees_des_aires)
     assert non_retenus == sorted(config.UAI_IPS_NON_RETENUS), (
         f"Lycées de l'IPS absents de la liste : {non_retenus}, attendus : "
         f"{sorted(config.UAI_IPS_NON_RETENUS)} (config.UAI_IPS_NON_RETENUS)."
     )
 
-    nb_lycees = len(lycees)
-    lycees = lycees.merge(ips_rentree[["uai", "ips", "secteur_ips"]], on="uai", how="left")
-    assert len(lycees) == nb_lycees, "La jointure avec l'IPS a changé le nombre de lycées."
+    lycees = lycees.merge(
+        ips_rentree[["uai", "ips", "secteur_ips"]], on="uai", how="left", validate="many_to_one"
+    )
     # Un secteur différent d'une source à l'autre attribuerait l'IPS au mauvais secteur
     secteur_different = lycees["secteur_ips"].notna() & (lycees["secteur"] != lycees["secteur_ips"])
     uai_differents = lycees.loc[secteur_different, "uai"].tolist()

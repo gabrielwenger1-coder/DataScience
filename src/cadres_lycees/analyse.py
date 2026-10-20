@@ -10,7 +10,9 @@ def profil_aires(lycees: gpd.GeoDataFrame) -> pd.DataFrame:
     L'IPS moyen est une moyenne simple des lycées qui ont un IPS, car la source ne donne pas
     d'effectifs. `ecart_ips` est l'IPS moyen du privé moins celui du public, en points d'IPS ;
     `n_ips_public` et `n_ips_prive` sont les nombres de lycées sur lesquels reposent ces moyennes.
+    Seuls les lycées situés dans les communes de l'aire comptent.
     """
+    lycees = lycees[lycees["aire"].notna()]
     prives = lycees[lycees["secteur"] == "prive"]
     profil = pd.DataFrame(
         {

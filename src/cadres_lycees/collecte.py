@@ -12,12 +12,14 @@ from cartiflette import carti_download
 from cadres_lycees import config, stockage
 
 
-def annuaire_education(departements: list[str]) -> gpd.GeoDataFrame:
-    """Renvoie les lycées de l'annuaire de l'éducation dans les départements demandés.
+def annuaire_education() -> gpd.GeoDataFrame:
+    """Renvoie les lycées de France métropolitaine de l'annuaire de l'éducation.
 
     Lycées généraux, technologiques et polyvalents, publics ou privés sous contrat (PLAN §2.4),
-    repérés par `code_nature` car les `voie_*` de l'annuaire sont trop souvent vides. Une ligne
-    par site : un UAI multi-sites apparaît plusieurs fois (dédoublonné au nettoyage).
+    repérés par `code_nature` car les `voie_*` de l'annuaire sont trop souvent vides. Toute la
+    métropole est gardée, pas seulement les aires et une marge autour : le lycée le plus proche
+    d'une commune du bord peut être bien au-delà de l'aire. Une ligne par site : un UAI
+    multi-sites apparaît plusieurs fois (dédoublonné au nettoyage).
     """
     if not stockage.existe(config.CHEMIN_RAW_ANNUAIRE):
         # Copie brute de l'export complet : l'annuaire change chaque jour, et les variantes de
@@ -32,8 +34,9 @@ def annuaire_education(departements: list[str]) -> gpd.GeoDataFrame:
         stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_ANNUAIRE)
     annuaire = stockage.lire_parquet(config.CHEMIN_RAW_ANNUAIRE)
 
-    # L'annuaire écrit les départements sur trois caractères ("035", "02A")
-    codes = [departement.zfill(3) for departement in departements]
+    # L'annuaire écrit les départements sur trois caractères : de "001" à "095", "02A" et "02B"
+    # en métropole, à partir de "971" outre-mer
+    metropole = annuaire["code_departement"].str.startswith("0")
     # Le type "Lycée" isole la partie lycée d'une cité scolaire, dont la partie collège
     # (type "Collège") porte le même UAI
     est_lycee = annuaire["type_etablissement"] == "Lycée"
@@ -42,22 +45,21 @@ def annuaire_education(departements: list[str]) -> gpd.GeoDataFrame:
     pas_agricole = (annuaire["ministere_tutelle"] != "AGRICULTURE") & (
         annuaire["lycee_agricole"] != "1"
     )
-    dans_les_departements = annuaire["code_departement"].isin(codes)
-    candidats = est_lycee & nature_retenue & pas_agricole & dans_les_departements
+    candidats = metropole & est_lycee & nature_retenue & pas_agricole
 
     # Un statut vide fait échouer les deux comparaisons plus bas : sans ce contrôle, le
-    # lycée serait écarté sans bruit
+    # lycée serait écarté sans bruit. Seuls les cas connus de `config` sont écartés
     statut_vide = candidats & annuaire["statut_public_prive"].isna()
-    uai_sans_statut = annuaire.loc[statut_vide, "identifiant_de_l_etablissement"].tolist()
-    assert not uai_sans_statut, f"Lycées sans statut public ou privé : {uai_sans_statut}"
+    uai_sans_statut = sorted(annuaire.loc[statut_vide, "identifiant_de_l_etablissement"])
+    assert uai_sans_statut == sorted(config.UAI_SANS_STATUT), (
+        f"Lycées sans statut public ou privé : {uai_sans_statut}, attendus : "
+        f"{sorted(config.UAI_SANS_STATUT)} (config.UAI_SANS_STATUT)."
+    )
 
     est_public = annuaire["statut_public_prive"] == "Public"
     est_prive = annuaire["statut_public_prive"] == "Privé"
     contrat_retenu = annuaire["code_type_contrat_prive"].isin(config.CONTRATS_PRIVE_RETENUS)
     lycees = annuaire[candidats & (est_public | (est_prive & contrat_retenu))]
-
-    sans_lycee = set(codes) - set(lycees["code_departement"])
-    assert not sans_lycee, f"Aucun lycée trouvé dans les départements {sorted(sans_lycee)}"
     return lycees.reset_index(drop=True)
 
 

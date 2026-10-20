@@ -70,13 +70,3 @@ def referentiel_communes(aires: dict[str, str]) -> gpd.GeoDataFrame:
     geometrie_vide = referentiel.geometry.isna() | referentiel.geometry.is_empty
     assert not geometrie_vide.any(), "Des communes n'ont pas de contour."
     return referentiel
-
-
-def departements_aires(aires: dict[str, str]) -> list[str]:
-    """Renvoie les départements des communes des aires (colonne `DEP` de l'AAV), sur 2 caractères.
-
-    Sert à demander l'annuaire : une aire déborde souvent de son département (Toulouse en
-    couvre six).
-    """
-    aav = collecte.aav_2020()
-    return sorted(set(aav.loc[aav["AAV2020"].isin(aires.values()), "DEP"]))
