@@ -8,6 +8,7 @@ CRS_CARTES = 4326
 
 # Rayons d'accessibilité en km : 5 est le rayon principal, 3 et 10 servent en robustesse
 RAYONS_KM = (3, 5, 10)
+RAYON_PRINCIPAL_KM = 5
 
 # Aires d'attraction des villes 2020 candidates : nom -> code AAV2020 (chaîne, le zéro compte)
 AIRES_CANDIDATES = {
@@ -123,3 +124,23 @@ COULEUR_TEXTE = "#52514e"
 COULEUR_LIAISON = "#c3c2b7"
 # Date de l'annuaire de l'éducation affichée dans la source des figures
 DATE_ANNUAIRE = "13/10/2026"
+# Secteurs écrits en toutes lettres dans les légendes et les infobulles
+LIBELLES_SECTEURS = {"public": "public", "prive": "privé sous contrat"}
+
+# Fig. 3 : classes de distance au lycée privé le plus proche, par leurs bornes supérieures en km
+# (incluses). Les rayons du §2.4 en sont les premières bornes : être à 5 km ou moins du plus
+# proche, c'est avoir au moins un lycée privé dans le rayon de 5 km. Au-delà de 20 km, les
+# communes les plus éloignées sont regroupées
+BORNES_DISTANCE_KM = (*RAYONS_KM, 20)
+# Palette ColorBrewer « Greens » à 5 classes, du plus proche (foncé) au plus loin (clair) : une
+# seule teinte, ni bleu ni orange, réservés aux secteurs des lycées
+COULEURS_DISTANCE = ("#006d2c", "#31a354", "#74c476", "#bae4b3", "#edf8e9")
+# Tolérance de simplification des contours, pour l'affichage seulement : à peu près la racine
+# carrée de l'aire des triangles retirés (algorithme de Visvalingam-Whyatt de shapely), soit
+# des limites déplacées jusqu'à 150 m environ. Le GeoJSON des 8 aires passe de 14,5 à 7 Mo ;
+# les calculs gardent les contours exacts
+SIMPLIFICATION_CARTE_M = 50
+# Fonds de carte sans clé d'accès, nommés comme dans xyzservices (folium les reconnaît) : le
+# gris laisse lire les couleurs des communes, le plan IGN donne les noms de lieux. CARTO, le fond
+# clair habituel, exige une clé depuis 2026 (constaté le 20/10)
+FONDS_CARTE = {"Fond gris (Esri)": "Esri.WorldGrayCanvas", "Plan IGN": "GeoportailFrance.plan"}

@@ -26,8 +26,10 @@ def _referentiel_aire(nom: str, code_aav: str, aav: pd.DataFrame) -> gpd.GeoData
     nb_attendu = [config.NB_ARRONDISSEMENTS.get(parent, 1) for parent in nb_unites.index]
     assert nb_unites.tolist() == nb_attendu, f"Arrondissements manquants dans l'aire {nom}."
 
-    unites = contours.rename(columns={"INSEE_COG": "code_commune", "INSEE_COM": "code_parent"})
-    unites = unites[["code_commune", "code_parent", "geometry"]].copy()
+    unites = contours.rename(
+        columns={"INSEE_COG": "code_commune", "INSEE_COM": "code_parent", "NOM": "nom_commune"}
+    )
+    unites = unites[["code_commune", "code_parent", "nom_commune", "geometry"]].copy()
     unites["aire"] = nom
     categorie = communes_aav.set_index("CODGEO")["CATEAAV2020"]
     unites["pole_couronne"] = unites["code_parent"].map(categorie).map(config.POLE_COURONNE_AAV)
@@ -53,9 +55,10 @@ def referentiel_communes(aires: dict[str, str]) -> gpd.GeoDataFrame:
     Les arrondissements municipaux remplacent leur commune parente (PLAN §2.1) : `code_parent`
     donne la commune parente, celle des sources qui ignorent les arrondissements.
 
-    Colonnes : `code_commune`, `code_parent`, `aire`, `pole_couronne`, `geometry` (contour),
-    `centroide` (point de référence de la commune, PLAN §2.4) et `dist_centre_km`, la distance
-    en kilomètres entre ce centroïde et celui de la commune-centre de l'aire.
+    Colonnes : `code_commune`, `code_parent`, `nom_commune`, `aire`, `pole_couronne`,
+    `geometry` (contour), `centroide` (point de référence de la commune, PLAN §2.4) et
+    `dist_centre_km`, la distance en kilomètres entre ce centroïde et celui de la
+    commune-centre de l'aire.
     """
     aav = collecte.aav_2020()
     referentiel = pd.concat(

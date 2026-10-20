@@ -24,11 +24,12 @@ def lycees_geo(
     lycees = annuaire.drop_duplicates("identifiant_de_l_etablissement")
     # L'annuaire nomme `position` sa colonne de coordonnées, le reste du code attend `geometry`
     lycees = lycees.rename_geometry("geometry").rename(
-        columns={"identifiant_de_l_etablissement": "uai"}
+        columns={"identifiant_de_l_etablissement": "uai", "nom_etablissement": "nom_lycee"}
     )
 
     lycees["secteur"] = lycees["statut_public_prive"].map(config.SECTEURS)
-    lycees = lycees[["uai", "code_commune", "secteur", "geometry"]].to_crs(config.CRS_CALCUL)
+    colonnes = ["uai", "nom_lycee", "code_commune", "secteur", "geometry"]
+    lycees = lycees[colonnes].to_crs(config.CRS_CALCUL)
 
     # Tous les lycées servent aux distances : un lycée sans position les fausserait sans bruit
     sans_position = lycees.geometry.isna() | lycees.geometry.is_empty
