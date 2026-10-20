@@ -1,4 +1,4 @@
-"""Téléchargement des sources de données, avec une copie brute dans raw/ (idempotent)."""
+"""Collecte des sources de données : copies brutes dans raw/, contrôlées par leur sha256."""
 
 import hashlib
 import io
@@ -12,6 +12,29 @@ from cartiflette import carti_download
 from cadres_lycees import config, stockage
 
 
+def _copies_publiques(chemin: str) -> list[str]:
+    """Renvoie les URL publiques d'une copie gelée : le bucket du projet, puis la release."""
+    return [config.URL_COPIES_S3 + chemin, config.URL_COPIES_RELEASE + chemin.removeprefix("raw/")]
+
+
+def geler_annuaire(chemin: str) -> str:
+    """Écrit à `chemin` l'export complet de l'annuaire par l'API et renvoie son sha256.
+
+    Produit une copie gelée : celle du 13/10/2026 vient de là. Le rapport ne l'appelle pas, il
+    lit la copie gelée (`annuaire_education`). Mode d'emploi dans le README.
+    """
+    # Un chemin daté déjà pris est une copie gelée, peut-être publique : on ne l'écrase jamais
+    assert not stockage.existe(chemin), f"{chemin} existe déjà : choisir un autre chemin daté."
+    reponse = requests.get(config.URL_ANNUAIRE, timeout=config.DELAI_TELECHARGEMENT_S)
+    reponse.raise_for_status()
+    # Une réponse 200 peut être tronquée ; "PAR1" ouvre et ferme tout fichier Parquet
+    assert reponse.content.startswith(b"PAR1") and reponse.content.endswith(b"PAR1"), (
+        "L'export de l'annuaire n'est pas un fichier Parquet complet : rien n'a été enregistré."
+    )
+    stockage.ecrire_octets(reponse.content, chemin)
+    return hashlib.sha256(reponse.content).hexdigest()
+
+
 def annuaire_education() -> gpd.GeoDataFrame:
     """Renvoie les lycées de France métropolitaine de l'annuaire de l'éducation.
 
@@ -19,20 +42,15 @@ def annuaire_education() -> gpd.GeoDataFrame:
     repérés par `code_nature` car les `voie_*` de l'annuaire sont trop souvent vides. Toute la
     métropole est gardée, pas seulement les aires et une marge autour : le lycée le plus proche
     d'une commune du bord peut être bien au-delà de l'aire. Une ligne par site : un UAI
-    multi-sites apparaît plusieurs fois (dédoublonné au nettoyage).
+    multi-sites apparaît plusieurs fois (dédoublonné au nettoyage). Lu dans la copie gelée du
+    13/10/2026, jamais dans l'API, qui change chaque jour.
     """
-    if not stockage.existe(config.CHEMIN_RAW_ANNUAIRE):
-        # Copie brute de l'export complet : l'annuaire change chaque jour, et les variantes de
-        # robustesse (PLAN §5.6) refont le filtre sans retélécharger
-        reponse = requests.get(config.URL_ANNUAIRE, timeout=config.DELAI_TELECHARGEMENT_S)
-        reponse.raise_for_status()
-        # Une réponse 200 tronquée resterait dans raw/ et existe() ne la retélécharge plus.
-        # "PAR1" ouvre et ferme tout fichier Parquet.
-        assert reponse.content.startswith(b"PAR1") and reponse.content.endswith(b"PAR1"), (
-            "L'export de l'annuaire n'est pas un fichier Parquet complet : rien n'a été enregistré."
-        )
-        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_ANNUAIRE)
-    annuaire = stockage.lire_parquet(config.CHEMIN_RAW_ANNUAIRE)
+    contenu = stockage.copie_controlee(
+        _copies_publiques(config.CHEMIN_RAW_ANNUAIRE),
+        config.CHEMIN_RAW_ANNUAIRE,
+        config.SHA256_ANNUAIRE,
+    )
+    annuaire = gpd.read_parquet(io.BytesIO(contenu))
 
     # L'annuaire écrit les départements sur trois caractères : de "001" à "095", "02A" et "02B"
     # en métropole, à partir de "971" outre-mer
@@ -69,21 +87,10 @@ def aav_2020() -> pd.DataFrame:
     Une ligne par commune du COG 2025, avec `AAV2020` (code de l'aire, "000" hors aire) et
     `CATEAAV2020` (commune-centre, pôle ou couronne). Tout est lu en chaîne : "013" perdrait son
     zéro en entier. Lyon, Marseille et Paris n'y figurent que par leur commune parente, pas par
-    leurs arrondissements.
+    leurs arrondissements. Le zip de l'Insee est permanent : il est lu à son URL d'origine.
     """
-    if not stockage.existe(config.CHEMIN_RAW_AAV):
-        reponse = requests.get(config.URL_AAV, timeout=config.DELAI_TELECHARGEMENT_S)
-        reponse.raise_for_status()
-        # Contrôle avant d'écrire : une copie abîmée resterait dans raw/ et existe() ne la
-        # retélécharge plus
-        sha256 = hashlib.sha256(reponse.content).hexdigest()
-        assert sha256 == config.SHA256_AAV, (
-            f"Le zip de l'AAV a le sha256 {sha256}, {config.SHA256_AAV} attendu : "
-            "rien n'a été enregistré."
-        )
-        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_AAV)
-
-    with zipfile.ZipFile(io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_AAV))) as archive:
+    contenu = stockage.copie_controlee([config.URL_AAV], config.CHEMIN_RAW_AAV, config.SHA256_AAV)
+    with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
         classeur = io.BytesIO(archive.read(config.XLSX_AAV))
     aav = pd.read_excel(
         classeur,
@@ -107,21 +114,11 @@ def serie_historique_rp2022() -> pd.DataFrame:
 
     Colonnes `CODGEO`, `P22_POP` et `SUPERF` (km²), en COG 2025. Les arrondissements de Lyon,
     Marseille et Paris y figurent avec leur commune parente : sommer tout le fichier compterait
-    ces villes deux fois.
+    ces villes deux fois. Le zip de l'Insee est permanent : il est lu à son URL d'origine.
     """
-    if not stockage.existe(config.CHEMIN_RAW_SERIE_RP2022):
-        reponse = requests.get(config.URL_SERIE_RP2022, timeout=config.DELAI_TELECHARGEMENT_S)
-        reponse.raise_for_status()
-        # Contrôle avant d'écrire : un téléchargement tronqué sans erreur a déjà été vu sur un zip
-        # de l'Insee, et existe() ne le retéléchargerait plus
-        sha256 = hashlib.sha256(reponse.content).hexdigest()
-        assert sha256 == config.SHA256_SERIE_RP2022, (
-            f"Le zip de la série historique a le sha256 {sha256}, "
-            f"{config.SHA256_SERIE_RP2022} attendu : rien n'a été enregistré."
-        )
-        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_SERIE_RP2022)
-
-    contenu = stockage.lire_octets(config.CHEMIN_RAW_SERIE_RP2022)
+    contenu = stockage.copie_controlee(
+        [config.URL_SERIE_RP2022], config.CHEMIN_RAW_SERIE_RP2022, config.SHA256_SERIE_RP2022
+    )
     with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
         csv = io.BytesIO(archive.read(config.CSV_SERIE_RP2022))
     # Lu en nombre, "01001" deviendrait 1001 ; une colonne disparue fait échouer la lecture
@@ -139,23 +136,14 @@ def serie_historique_rp2022() -> pd.DataFrame:
 def ival_lycees() -> pd.DataFrame:
     """Renvoie les indicateurs de valeur ajoutée des lycées GT : une ligne par lycée et session.
 
-    Copie du 20/10/2026, contrôlée par sha256 comme l'IPS : le code échoue si la source a
-    changé depuis, au lieu de lire des données différentes. Tout est lu en chaîne, pour garder
-    les codes communes tels quels (« 2A004 », zéros en tête) : la conversion des valeurs se fait
-    au nettoyage.
+    Lu dans la copie gelée du 20/10/2026 de l'export de l'API (`config.URL_IVAL`). Tout est lu en
+    chaîne, pour garder les codes communes tels quels (« 2A004 », zéros
+    en tête) : la conversion des valeurs se fait au nettoyage.
     """
-    if not stockage.existe(config.CHEMIN_RAW_IVAL):
-        reponse = requests.get(config.URL_IVAL, timeout=config.DELAI_TELECHARGEMENT_S)
-        reponse.raise_for_status()
-        sha256 = hashlib.sha256(reponse.content).hexdigest()
-        assert sha256 == config.SHA256_IVAL, (
-            f"L'export de l'IVAL a le sha256 {sha256}, {config.SHA256_IVAL} attendu : la source "
-            "a changé depuis le 20/10/2026, rien n'a été enregistré."
-        )
-        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_IVAL)
-
-    csv = io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_IVAL))
-    ival = pd.read_csv(csv, sep=";", encoding="utf-8-sig", dtype=str)
+    contenu = stockage.copie_controlee(
+        _copies_publiques(config.CHEMIN_RAW_IVAL), config.CHEMIN_RAW_IVAL, config.SHA256_IVAL
+    )
+    ival = pd.read_csv(io.BytesIO(contenu), sep=";", encoding="utf-8-sig", dtype=str)
 
     assert len(ival) == config.NB_LIGNES_IVAL, (
         f"{len(ival)} lignes dans l'IVAL, {config.NB_LIGNES_IVAL} attendues."
@@ -164,45 +152,49 @@ def ival_lycees() -> pd.DataFrame:
     return ival
 
 
+def geler_contours(code_aav: str, chemin: str) -> str:
+    """Écrit à `chemin` les contours d'une aire téléchargés par cartiflette et renvoie leur sha256.
+
+    Produit une copie gelée : celles du 13/10/2026 viennent de là. Le rapport ne l'appelle pas,
+    il lit la copie gelée (`contours_aire`). Le sha256 fige une sérialisation (versions de
+    geopandas et de pyarrow comprises), pas seulement des données. Mode d'emploi dans le README.
+    """
+    assert not stockage.existe(chemin), f"{chemin} existe déjà : choisir un autre chemin daté."
+    contours = carti_download(
+        values=code_aav,
+        borders="COMMUNE_ARRONDISSEMENT",
+        filter_by="AIRE_ATTRACTION_VILLES",
+        year=config.ANNEE_COG,
+        simplification=config.SIMPLIFICATION_CONTOURS,
+    )
+    stockage.ecrire_parquet(contours, chemin)
+    return hashlib.sha256(stockage.lire_octets(chemin)).hexdigest()
+
+
 def contours_aire(code_aav: str) -> gpd.GeoDataFrame:
     """Renvoie les contours des communes d'une aire d'attraction, en WGS84 (COG 2025).
 
     Les arrondissements municipaux remplacent leur commune parente (Lyon 69123 devient 69381 à
-    69389) ; `INSEE_COM` garde le code de la commune parente et `INSEE_COG` celui de l'unité.
+    69389) ; `INSEE_COM` garde le code de la commune parente et `INSEE_COG` celui de l'unité. Lu
+    dans la copie gelée du 13/10/2026.
     """
     chemin = config.CHEMIN_RAW_CONTOURS.format(aav=code_aav)
-    if not stockage.existe(chemin):
-        contours = carti_download(
-            values=code_aav,
-            borders="COMMUNE_ARRONDISSEMENT",
-            filter_by="AIRE_ATTRACTION_VILLES",
-            year=config.ANNEE_COG,
-            simplification=config.SIMPLIFICATION_CONTOURS,
-        )
-        stockage.ecrire_parquet(contours, chemin)
-    return stockage.lire_parquet(chemin)
+    contenu = stockage.copie_controlee(
+        _copies_publiques(chemin), chemin, config.SHA256_CONTOURS[code_aav]
+    )
+    return gpd.read_parquet(io.BytesIO(contenu))
 
 
 def ips_lycees() -> pd.DataFrame:
     """Renvoie l'IPS des lycées : une ligne par lycée et par rentrée, de 2023-2024 à 2025-2026.
 
-    Copie du 13/10/2026 : comme pour l'AAV, le sha256 est contrôlé avant l'écriture dans raw/, et
-    le code échoue si la source a changé depuis au lieu de lire des données différentes.
-    Tout est lu en chaîne, la conversion en nombres se fait au nettoyage.
+    Lu dans la copie gelée du 13/10/2026 de l'export de l'API (`config.URL_IPS`). Tout est lu en
+    chaîne, la conversion en nombres se fait au nettoyage.
     """
-    if not stockage.existe(config.CHEMIN_RAW_IPS):
-        reponse = requests.get(config.URL_IPS, timeout=config.DELAI_TELECHARGEMENT_S)
-        reponse.raise_for_status()
-        sha256 = hashlib.sha256(reponse.content).hexdigest()
-        assert sha256 == config.SHA256_IPS, (
-            f"L'export de l'IPS a le sha256 {sha256}, {config.SHA256_IPS} attendu : la source a "
-            "changé depuis le 13/10/2026, rien n'a été enregistré."
-        )
-        stockage.ecrire_octets(reponse.content, config.CHEMIN_RAW_IPS)
-
-    csv = io.BytesIO(stockage.lire_octets(config.CHEMIN_RAW_IPS))
-    # Séparateur ";" et BOM UTF-8 en tête du fichier
-    ips = pd.read_csv(csv, sep=";", encoding="utf-8-sig", dtype=str)
+    contenu = stockage.copie_controlee(
+        _copies_publiques(config.CHEMIN_RAW_IPS), config.CHEMIN_RAW_IPS, config.SHA256_IPS
+    )
+    ips = pd.read_csv(io.BytesIO(contenu), sep=";", encoding="utf-8-sig", dtype=str)
 
     assert len(ips) == config.NB_LIGNES_IPS, (
         f"{len(ips)} lignes dans l'IPS, {config.NB_LIGNES_IPS} attendues."

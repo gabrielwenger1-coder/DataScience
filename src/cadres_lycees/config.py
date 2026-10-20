@@ -30,17 +30,27 @@ VARIABLES_AWS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
 VARIABLE_BUCKET_S3 = "BUCKET_S3"
 PREFIXE_S3 = "projet-cadres-lycees"
 DOSSIER_LOCAL = Path(__file__).parents[2] / "data"
+# Adresses de lecture publique des copies gelées des sources qui changent sans prévenir (PLAN §7,
+# A2) : le dossier raw/ du bucket de Giulio, qui doit rester accessible jusqu'à la soutenance,
+# puis en repli une release GitHub du dépôt (les deux hébergements, choix de l'étudiant du
+# 20/10). Le sha256 de chaque copie est contrôlé à chaque lecture, quelle que soit sa provenance
+URL_COPIES_S3 = "https://minio.lab.sspcloud.fr/gfogato/projet-cadres-lycees/"
+URL_COPIES_RELEASE = (
+    "https://github.com/gabrielwenger1-coder/DataScience/releases/download/donnees-20261020/"
+)
 
-# Annuaire de l'éducation (source 3)
+# Annuaire de l'éducation (source 3) : export complet de l'API, gelé le 13/10/2026. L'annuaire
+# change chaque jour : le 20/10, un lycée sans coordonnées (0451844K) y est apparu
 URL_ANNUAIRE = (
     "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
     "fr-en-annuaire-education/exports/parquet"
 )
-CHEMIN_RAW_ANNUAIRE = "raw/annuaire_education.parquet"
+CHEMIN_RAW_ANNUAIRE = "raw/annuaire_education_20261013.parquet"
+SHA256_ANNUAIRE = "2c493f152bc8fc682aa8b1f063392015941bcff36bae2ae59a4d1a1e6334e94a"
 # Délai d'attente de `requests` par lecture, pas durée totale (le téléchargement dure ~12 s)
 DELAI_TELECHARGEMENT_S = 120
 # Zonage en aires d'attraction des villes 2020 (source 8), géographie au 01/01/2025. Le zip de
-# l'Insee est permanent : on contrôle son sha256 au téléchargement
+# l'Insee est permanent : il est lu à son URL d'origine, et son sha256 est contrôlé à chaque lecture
 URL_AAV = "https://www.insee.fr/fr/statistiques/fichier/4803954/AAV2020_au_01-01-2025.zip"
 SHA256_AAV = "738f81b12832fe294bd24ddbfe3a31830c20d850143fc8b4393f18d4b8ee8181"
 CHEMIN_RAW_AAV = "raw/AAV2020_au_01-01-2025.zip"
@@ -58,8 +68,8 @@ CATEGORIES_AAV = ("11", "12", "13", "20", "30")
 # Série historique du recensement 2022 : population et superficie (km²) en COG 2025,
 # arrondissements municipaux et communes parentes ensemble. Elle remplace la source 2 du plan
 # (« Évolution et structure », §3.1) pour la population et la superficie, que ce fichier-là n'a
-# pas ; P22_POP y est identique dans les 8 aires. Le zip de l'Insee est permanent : on contrôle
-# son sha256 au téléchargement (observé le 20/10)
+# pas ; P22_POP y est identique dans les 8 aires. Le zip de l'Insee est permanent : il est lu à son
+# URL d'origine, et son sha256 (observé le 20/10) est contrôlé à chaque lecture
 URL_SERIE_RP2022 = (
     "https://www.insee.fr/fr/statistiques/fichier/8582555/base-cc-serie-historique-2022_csv.zip"
 )
@@ -86,19 +96,30 @@ UAI_SANS_STATUT = ("0271911F",)
 # simplifierait les contours (les centroïdes bougeraient jusqu'à 52 m) ; il ne publie qu'en WGS84
 ANNEE_COG = 2025
 SIMPLIFICATION_CONTOURS = 0
-# Une copie brute par aire d'attraction, pour ne retélécharger que l'aire ajoutée
-CHEMIN_RAW_CONTOURS = "raw/contours_aav_{aav}.parquet"
+# Une copie gelée par aire d'attraction, du 13/10/2026 : les données de cartiflette sont lues sur
+# son serveur, qui peut changer, et son client a déjà changé de comportement par défaut
+CHEMIN_RAW_CONTOURS = "raw/contours_aav_{aav}_20261013.parquet"
+SHA256_CONTOURS = {
+    "002": "5fc255ef5f92c540c5037f793c15c24007642c7cdce256a1e4f47d516176f231",
+    "004": "6ff1e4bc0675ab567b7af3eb506774c0740ab855c5f333c66ee6b8fe1eb89982",
+    "005": "c42afd4910a9a6907c54e2f8d476b8a4b6db3630bf9ffdff7b41cedf8a3b2c6e",
+    "006": "6e0cb9a94a69887fd123a2d57c49068aa25b207da9541813652c00f1b2930c28",
+    "008": "54665ed725b9ae364166d6dc76cd09b71b8e42397916e6fe564d8f0308786e59",
+    "010": "454d27768198bb48be5882987f3aa36f88902add34bf443dff0cd37cc8be7790",
+    "013": "c846f8d895d3121435037f5c04054a9e2275bb95e2de1791cae61498550b4cec",
+    "014": "a1d13c20cc9565de3e2b3bb78b8d020076bae7c2a94ac2648d7aa96aa0699357",
+}
 # Pôle ou couronne d'après `CATEAAV2020`. Les codes 13 (pôle secondaire, aucun dans les 8 aires
 # candidates) et 30 (hors aire) n'y sont pas : ils feraient échouer `geo.referentiel_communes`
 POLE_COURONNE_AAV = {"11": "pole", "12": "pole", "20": "couronne"}
 # Communes à arrondissements municipaux des aires candidates (Paris et Marseille n'en font pas
 # partie) : Lyon en a 9, de 69381 à 69389. Toute autre commune est une seule unité
 NB_ARRONDISSEMENTS = {"69123": 9}
-# La commune-centre de l'aire (la plus peuplée du pôle, PLAN §2.5)
+# La commune-centre de l'aire, définie par l'Insee (`CATEAAV2020` = 11, PLAN §2.5)
 CATEGORIE_COMMUNE_CENTRE = "11"
 
-# IPS des lycées (source 5), copie du 13/10/2026 : l'export est identique d'un téléchargement à
-# l'autre, et le sha256 fait échouer le code si la source a changé depuis
+# IPS des lycées (source 5) : export de l'API gelé le 13/10/2026 ; le rapport lit la copie gelée,
+# jamais l'API
 URL_IPS = (
     "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
     "fr-en-ips-lycees-ap2023/exports/csv"
@@ -127,9 +148,8 @@ UAI_IPS_NON_RETENUS = (
     "0596681S",
 )
 
-# IVAL des lycées généraux et technologiques (source 6), copie du 20/10/2026 : l'export est
-# identique d'un téléchargement à l'autre (4 essais), et le sha256 fait échouer le code si la
-# source a changé depuis
+# IVAL des lycées généraux et technologiques (source 6) : export de l'API gelé le 20/10/2026 ;
+# le rapport lit la copie gelée, jamais l'API
 URL_IVAL = (
     "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/"
     "fr-en-indicateurs-de-resultat-des-lycees-gt_v2/exports/csv"

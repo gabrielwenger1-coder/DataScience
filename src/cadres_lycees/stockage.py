@@ -1,13 +1,13 @@
-"""Lecture et écriture de fichiers Parquet, sur S3 ou en local selon l'environnement."""
+"""Lecture et écriture des données, sur S3 ou en local, et copies contrôlées des sources."""
 
 import functools
+import hashlib
 import io
 import os
 import warnings
 
-import geopandas as gpd
 import pandas as pd
-import pyarrow.parquet as pq
+import requests
 import s3fs
 from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
@@ -64,29 +64,57 @@ def lire_octets(chemin: str) -> bytes:
 
 def ecrire_parquet(df: pd.DataFrame, chemin: str) -> None:
     """Écrit `df` en Parquet à `chemin`. Un GeoDataFrame est écrit en GeoParquet."""
-    # Sérialiser en mémoire d'abord : si to_parquet échoue, aucun fichier partiel ne reste,
-    # et existe() ne le prendra pas pour un succès (la collecte ne le retélécharge pas).
+    # Sérialiser en mémoire d'abord : si to_parquet échoue, aucun fichier partiel ne reste
     tampon = io.BytesIO()
     df.to_parquet(tampon)
     ecrire_octets(tampon.getvalue(), chemin)
-
-
-def lire_parquet(chemin: str) -> pd.DataFrame:
-    """Lit le Parquet à `chemin` ; un GeoParquet revient en GeoDataFrame.
-
-    Il faut distinguer les deux : `pd.read_parquet` lirait la géométrie comme des octets
-    bruts, sans erreur, et les jointures spatiales échoueraient beaucoup plus loin.
-    """
-    systeme, complet = _systeme_fichiers(chemin)
-    with systeme.open(complet, "rb") as fichier:
-        metadonnees = pq.read_schema(fichier).metadata or {}
-        fichier.seek(0)
-        if b"geo" in metadonnees:
-            return gpd.read_parquet(fichier)
-        return pd.read_parquet(fichier)
 
 
 def existe(chemin: str) -> bool:
     """Indique si le fichier `chemin` existe, pour ne pas retélécharger une source (PLAN §8.2)."""
     systeme, complet = _systeme_fichiers(chemin)
     return systeme.exists(complet)
+
+
+def _telecharger(urls: list[str], sha256: str) -> bytes:
+    """Renvoie le contenu de la première des `urls` qui fournit le fichier attendu (même sha256).
+
+    Une URL injoignable, ou qui fournit un autre contenu, laisse la place à la suivante, avec un
+    avertissement : une copie principale en panne ne doit pas passer inaperçue. Si aucune ne
+    convient, tous les refus sont dans le message d'erreur. Une URL mal écrite fait échouer.
+    """
+    refus = []
+    for url in urls:
+        try:
+            reponse = requests.get(url, timeout=config.DELAI_TELECHARGEMENT_S)
+        except (requests.ConnectionError, requests.Timeout) as erreur:
+            refus.append(f"{url} : {erreur}")
+            warnings.warn(refus[-1], stacklevel=2)
+            continue
+        recu = hashlib.sha256(reponse.content).hexdigest()
+        if reponse.ok and recu == sha256:
+            return reponse.content
+        refus.append(f"{url} : HTTP {reponse.status_code}, sha256 {recu}")
+        warnings.warn(refus[-1], stacklevel=2)
+    raise RuntimeError(f"Aucune source ne fournit le fichier de sha256 {sha256} : {refus}")
+
+
+def copie_controlee(urls: list[str], chemin: str, sha256: str) -> bytes:
+    """Renvoie le contenu du fichier brut `chemin`, après contrôle de son sha256.
+
+    S'il n'est pas encore stocké, il est téléchargé à la première des `urls` qui le fournit à
+    l'identique, puis enregistré. Le sha256 est contrôlé aussi à la relecture : le projet ne lit
+    jamais d'autres données que celles qu'il a fixées (PLAN §7), même si une copie locale a été
+    abîmée ou remplacée.
+    """
+    if not existe(chemin):
+        contenu = _telecharger(urls, sha256)
+        ecrire_octets(contenu, chemin)
+        return contenu
+    contenu = lire_octets(chemin)
+    recu = hashlib.sha256(contenu).hexdigest()
+    assert recu == sha256, (
+        f"{chemin} a le sha256 {recu}, {sha256} attendu : supprimer cette copie pour qu'elle "
+        "soit retéléchargée."
+    )
+    return contenu
