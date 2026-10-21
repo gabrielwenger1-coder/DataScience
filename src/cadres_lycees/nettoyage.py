@@ -178,40 +178,58 @@ def part_cadres_iris(
 
     Une ligne par IRIS de 2022 (index `iris`, codes de la géographie 2024). La part est le groupe
     3 sur la somme des 6 groupes, comme pour la commune (§2.3), mais sur les 15-64 ans, seule
-    tranche que les bases IRIS croisent avec la CSP. Elle manque sans actif, et en 2011 si le code
-    n'existait pas. `comparable` est vrai si l'IRIS a le même code aux deux dates, dans une
-    commune qui n'en a absorbé aucune autre entre les géographies 2013 et 2024, et au moins
-    `config.SEUIL_ACTIFS_IRIS` actifs aux deux dates (A18). Les arguments viennent de
-    `collecte.activite_iris_2011`, `collecte.activite_iris_2022` et `collecte.passage_communes`.
+    tranche que les bases IRIS croisent avec la CSP. Elle manque sans actif (IRIS d'activité ou de
+    loisirs, ce qui n'est pas une erreur, contrairement à une commune sans actif en T5), et en 2011
+    si le code n'existait pas. `comparable` est vrai si l'IRIS a le même code et une part aux
+    deux dates, sauf l'IRIS unique (commune + 0000) d'une commune non découpée qui en a absorbé
+    une autre entre les géographies 2013 et 2024 : il garde son code, mais pas son territoire
+    (A18). Les arguments viennent de `collecte.activite_iris_2011`, `collecte.activite_iris_2022`
+    et `collecte.passage_communes`.
     """
-    parts = pd.DataFrame(index=pd.Index(activite_2022["IRIS"], name="iris"))
-    annees = (
-        (2011, activite_2011, config.ACTIFS_1564_IRIS_2011, config.CADRES_1564_IRIS_2011),
-        (2022, activite_2022, config.ACTIFS_1564_IRIS_2022, config.CADRES_1564_IRIS_2022),
+    actifs_2011, part_2011 = _actifs_et_part(
+        activite_2011, config.ACTIFS_1564_IRIS_2011, config.CADRES_1564_IRIS_2011
     )
-    for annee, activite, groupes, cadres in annees:
-        effectifs = activite.set_index("IRIS")[list(groupes)]
-        actifs = effectifs.sum(axis=1)
-        # Un IRIS d'activité ou de loisirs peut n'avoir aucun actif : sa part n'existe pas
-        part = (effectifs[cadres] / actifs).where(actifs > 0)
-        parts[f"actifs_1564_{annee}"] = actifs.reindex(parts.index)
-        parts[f"part_cadres_1564_{annee}"] = part.reindex(parts.index)
-    for annee in (2011, 2022):
-        renseignee = parts[f"part_cadres_1564_{annee}"].dropna()
-        assert renseignee.between(0, 1).all(), f"Part de cadres hors de [0, 1] en {annee}."
+    actifs_2022, part_2022 = _actifs_et_part(
+        activite_2022, config.ACTIFS_1564_IRIS_2022, config.CADRES_1564_IRIS_2022
+    )
+    # Les IRIS de 2022 font l'index ; un IRIS sans code en 2011 y a des valeurs manquantes
+    parts = pd.DataFrame(
+        {
+            "actifs_1564_2011": actifs_2011,
+            "part_cadres_1564_2011": part_2011,
+            "actifs_1564_2022": actifs_2022,
+            "part_cadres_1564_2022": part_2022,
+        },
+        index=actifs_2022.index,
+    ).rename_axis("iris")
 
-    # Une commune non découpée qui en absorbe une autre garde son code IRIS (commune + 0000),
-    # mais pas son territoire : même code ne veut alors pas dire même IRIS
+    # Une filiation à case vide (commune créée ou disparue) ne dit rien d'une fusion entre 2013
+    # et 2024 ; une commune peut avoir plusieurs lignes, d'où les paires uniques
     filiations = passage.dropna().drop_duplicates()
     communes_2013 = filiations.groupby("CODGEO_2024")["CODGEO_2013"].nunique()
     fusionnees = communes_2013.index[communes_2013 > 1]
+    # Dans une commune découpée, le territoire absorbé reçoit de nouveaux codes, déjà écartés
+    # parce qu'absents en 2011 : seul l'IRIS unique d'une commune non découpée change en gardant
+    # son code
     commune = activite_2022.set_index("IRIS")["COM"]
-    meme_code = pd.Series(parts.index.isin(activite_2011["IRIS"]), index=parts.index)
-    commune_fusionnee = commune.reindex(parts.index).isin(fusionnees)
-    actifs = parts[["actifs_1564_2011", "actifs_1564_2022"]]
-    assez_d_actifs = (actifs >= config.SEUIL_ACTIFS_IRIS).all(axis=1)
-    parts["comparable"] = meme_code & ~commune_fusionnee & assez_d_actifs
+    iris_unique = parts.index.str.endswith("0000")
+    agrandi = commune.isin(fusionnees).to_numpy() & iris_unique
+    meme_code = parts.index.isin(actifs_2011.index)
+    # Un IRIS sans actif à une date n'a pas de part à comparer
+    deux_parts = parts[["part_cadres_1564_2011", "part_cadres_1564_2022"]].notna().all(axis=1)
+    parts["comparable"] = meme_code & ~agrandi & deux_parts
     return parts
+
+
+def _actifs_et_part(
+    activite: pd.DataFrame, groupes: tuple[str, ...], cadres: str
+) -> tuple[pd.Series, pd.Series]:
+    """Renvoie, par IRIS, les actifs (somme des 6 groupes) et la part de cadres parmi eux."""
+    effectifs = activite.set_index("IRIS")[list(groupes)]
+    actifs = effectifs.sum(axis=1)
+    part = (effectifs[cadres] / actifs).where(actifs > 0)
+    assert part.dropna().between(0, 1).all(), "Part de cadres hors de [0, 1]."
+    return actifs, part
 
 
 def ival_par_lycee(

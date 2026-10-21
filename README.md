@@ -72,6 +72,12 @@ collecte.geler_contours(
     maille="DEPARTEMENT",
     filtre="FRANCE_ENTIERE",
 )
+collecte.geler_contours(
+    "raw/contours_iris_008_AAAAMMJJ.parquet",
+    valeur="008",
+    maille="IRIS",
+    filtre="AIRE_ATTRACTION_VILLES",
+)
 ```
 
 Les deux fonctions refusent d'écraser un chemin existant. Il faut ensuite reporter le chemin et le `sha256` dans `config.py`, publier le fichier aux deux adresses ci-dessus et mettre à jour ce tableau.

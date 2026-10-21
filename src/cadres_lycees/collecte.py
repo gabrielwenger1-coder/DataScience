@@ -157,8 +157,9 @@ def geler_contours(chemin: str, valeur: str, maille: str, filtre: str) -> str:
 
     `valeur`, `maille` et `filtre` sont les arguments `values`, `borders` et `filter_by` de
     `carti_download` : un code d'aire, "COMMUNE_ARRONDISSEMENT" et "AIRE_ATTRACTION_VILLES" pour
-    les contours d'une aire ; "France", "DEPARTEMENT" et "FRANCE_ENTIERE" pour les départements.
-    Produit une copie gelée : celles du 13/10 et du 20/10/2026 viennent de là. Le rapport ne
+    les contours d'une aire ; "France", "DEPARTEMENT" et "FRANCE_ENTIERE" pour les départements ;
+    un code d'aire, "IRIS" et "AIRE_ATTRACTION_VILLES" pour les IRIS d'une aire (carte A18).
+    Produit une copie gelée : celles des 13, 20 et 21/10/2026 viennent de là. Le rapport ne
     l'appelle pas, il lit la copie gelée. Le sha256 fige une sérialisation (versions de geopandas
     et de pyarrow comprises), pas seulement des données. Mode d'emploi dans le README.
     """
@@ -227,9 +228,9 @@ def activite_iris_2022() -> pd.DataFrame:
 def activite_iris_2011() -> pd.DataFrame:
     """Renvoie les actifs de 15 à 64 ans par groupe socioprofessionnel et par IRIS, en 2011.
 
-    Colonnes `IRIS`, `COM` et celles de `config.ACTIFS_1564_IRIS_2011`, en géographie 2013. Le
-    fichier n'existe qu'en xls : il est lu avec calamine, tout en texte pour garder les zéros
-    initiaux des codes, puis les effectifs sont convertis en nombres.
+    Colonnes `IRIS` et celles de `config.ACTIFS_1564_IRIS_2011`, en géographie 2013. Le fichier
+    n'existe qu'en xls : il est lu avec calamine, tout en texte pour garder les zéros initiaux des
+    codes, puis les effectifs sont convertis en nombres.
     """
     contenu = stockage.copie_controlee(
         [config.URL_ACTIVITE_IRIS_2011],
@@ -238,9 +239,14 @@ def activite_iris_2011() -> pd.DataFrame:
     )
     with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
         xls = io.BytesIO(archive.read(config.XLS_ACTIVITE_IRIS_2011))
-    # Noms de variables à la ligne 6 de la feuille, après les titres
-    feuille = pd.read_excel(xls, sheet_name="IRIS", header=5, dtype=str, engine="calamine")
-    activite = feuille[["IRIS", "COM", *config.ACTIFS_1564_IRIS_2011]].copy()
+    feuille = pd.read_excel(
+        xls,
+        sheet_name=config.FEUILLE_ACTIVITE_IRIS_2011,
+        header=config.ENTETE_ACTIVITE_IRIS_2011,
+        dtype=str,
+        engine="calamine",
+    )
+    activite = feuille[["IRIS", *config.ACTIFS_1564_IRIS_2011]].copy()
     groupes = list(config.ACTIFS_1564_IRIS_2011)
     # Une valeur non numérique fait échouer la conversion
     activite[groupes] = activite[groupes].astype(float)
@@ -262,8 +268,16 @@ def passage_communes() -> pd.DataFrame:
     )
     with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
         xlsx = io.BytesIO(archive.read(config.XLSX_PASSAGE_COG))
-    # Noms de variables à la ligne 6 de la feuille COM, après les titres
-    table = pd.read_excel(xlsx, sheet_name="COM", header=5, dtype=str, engine="calamine")
+    table = pd.read_excel(
+        xlsx,
+        sheet_name=config.FEUILLE_PASSAGE_COG,
+        header=config.ENTETE_PASSAGE_COG,
+        dtype=str,
+        engine="calamine",
+    )
+    assert len(table) == config.NB_LIGNES_PASSAGE_COG, (
+        f"{len(table)} lignes dans la table de passage, {config.NB_LIGNES_PASSAGE_COG} attendues."
+    )
     return table[["CODGEO_2013", "CODGEO_2024"]]
 
 

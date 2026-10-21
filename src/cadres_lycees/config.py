@@ -131,6 +131,9 @@ URL_ACTIVITE_IRIS_2011 = (
 SHA256_ACTIVITE_IRIS_2011 = "05076a23c7a3e6bab7aadae8e1b12c17ed1a2aff395340edd59df1474719e7ea"
 CHEMIN_RAW_ACTIVITE_IRIS_2011 = "raw/infra-activite-resident-2011.zip"
 XLS_ACTIVITE_IRIS_2011 = "base-ic-activite-residents-2011.xls"
+# Feuille des IRIS ; noms de variables à la ligne 6, après les titres
+FEUILLE_ACTIVITE_IRIS_2011 = "IRIS"
+ENTETE_ACTIVITE_IRIS_2011 = 5
 NB_LIGNES_ACTIVITE_IRIS_2011 = 50867
 # Actifs de 15 à 64 ans des 6 groupes socioprofessionnels, du groupe 1 au groupe 6 (le 3 : cadres)
 ACTIFS_1564_IRIS_2022 = (
@@ -151,10 +154,6 @@ ACTIFS_1564_IRIS_2011 = (
 )
 CADRES_1564_IRIS_2022 = "C22_ACT1564_STAT_GSEC13_23"
 CADRES_1564_IRIS_2011 = "C11_ACT1564_CS3"
-# Seuil indicatif du §3.2 (200 actifs), appliqué à chaque IRIS et aux deux dates : en dessous, la
-# part repose sur quelques dizaines de cadres au plus, dont le coefficient de variation dépasse
-# 18 % sous 50 cadres (feuille « Précision » de la base 2011)
-SEUIL_ACTIFS_IRIS = 200
 # Contours des IRIS des aires retenues (cartiflette 0.4.0, COG 2025, sans simplification),
 # copies gelées du 21/10
 CHEMIN_RAW_CONTOURS_IRIS = "raw/contours_iris_{aav}_20261021.parquet"
@@ -174,6 +173,11 @@ URL_PASSAGE_COG = (
 SHA256_PASSAGE_COG = "803527a040748f4c7dc5e97777cb5838e8b7d4cc36d0b182f53a83e9787d595b"
 CHEMIN_RAW_PASSAGE_COG = "raw/table_passage_annuelle_2025.zip"
 XLSX_PASSAGE_COG = "table_passage_annuelle_2025.xlsx"
+# Feuille des communes et arrondissements ; noms de variables à la ligne 6, après les titres
+FEUILLE_PASSAGE_COG = "COM"
+ENTETE_PASSAGE_COG = 5
+# Une ligne par chemin de filiation (exploration §8)
+NB_LIGNES_PASSAGE_COG = 36760
 
 # Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
 # restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,
@@ -340,7 +344,7 @@ FONDS_CARTE = {"Fond gris (Esri)": "Esri.WorldGrayCanvas", "Plan IGN": "Geoporta
 BORNES_PART_CADRES_IRIS = (10, 20, 30, 40, 50)
 COULEURS_PART_CADRES_IRIS = ("#f2f0f7", "#dadaeb", "#bcbddc", "#9e9ac8", "#756bb1", "#54278f")
 COULEUR_IRIS_NON_COMPARABLE = "#e3e2de"
-# Demi-côté, en km, du carré de zoom sur la ville-centre, où les IRIS sont trop petits pour se
-# lire à l'échelle de l'aire : 7 km couvrent la commune-centre des 3 aires (Lyon avec ses
-# arrondissements et Villeurbanne)
-ZOOM_IRIS_KM = 7
+# Demi-côté, en km, du carré de zoom sur la commune-centre, où les IRIS sont trop petits pour se
+# lire à l'échelle de l'aire. 9 km couvrent les communes-centres des 3 aires, Strasbourg compris
+# (17,3 km du nord au sud), et Villeurbanne avec Lyon
+ZOOM_IRIS_KM = 9
