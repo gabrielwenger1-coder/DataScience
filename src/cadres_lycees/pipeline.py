@@ -25,14 +25,35 @@ def construire_base(
     """Construit la base communale, les lycées et les paires de communes contiguës des aires.
 
     `aires` associe le nom de l'aire à son code AAV2020 (par exemple `config.AIRES_RETENUES`).
-    La base a une ligne par commune du référentiel (arrondissements à Lyon) : accès aux lycées
-    privés et publics (§2.4), nombre de lycées et IVAL moyenne dans chaque rayon, population,
-    densité et exposition 0/1. Les sources sont lues dans leurs copies contrôlées (§7). Écrit
-    `config.CHEMIN_BASE` et `config.CHEMIN_PAIRES`, décrits dans `docs/dictionnaire_variables.md`,
-    et renvoie (base, lycées, paires).
+    La base a une ligne par commune du référentiel (arrondissements à Lyon) : les colonnes de
+    `_base_sans_cadres`, puis `part_cadres_2011`, `part_cadres_2022`, `evol_cadres_pts`,
+    `actifs_2011` et `actifs_2022` (§2.3). Les
+    sources sont lues dans leurs copies contrôlées (§7). Écrit `config.CHEMIN_BASE` et
+    `config.CHEMIN_PAIRES`, décrits dans `docs/dictionnaire_variables.md`, et renvoie
+    (base, lycées, paires).
     """
     referentiel = geo.referentiel_communes(aires)
     lycees = lycees_avec_aire(referentiel)
+    base = _base_sans_cadres(referentiel, lycees)
+    cadres = nettoyage.part_cadres(collecte.evol_struct_rp2022(), referentiel)
+    base = base.merge(
+        cadres, left_on="code_commune", right_index=True, how="left", validate="one_to_one"
+    )
+    assert base[cadres.columns].notna().all().all(), "Part de cadres manquante après la jointure."
+
+    paires = geo.paires_contigues(base, list(config.VARIABLES_PAIRES))
+    stockage.ecrire_parquet(base, config.CHEMIN_BASE)
+    stockage.ecrire_parquet(paires, config.CHEMIN_PAIRES)
+    return base, lycees, paires
+
+
+def _base_sans_cadres(referentiel: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Renvoie la base communale sans la part de cadres.
+
+    Une ligne par commune du référentiel : accès aux lycées privés et publics (§2.4), nombre de
+    lycées et IVAL moyenne dans chaque rayon, population, densité et exposition 0/1. Le tableau
+    de support n'utilise que cette partie : il ne lit aucune donnée sur les cadres (A3).
+    """
     acces_tous_lycees = accessibilite.indicateurs(
         referentiel, lycees, "lyc", attribut="ival", poids="poids_ival"
     )
@@ -60,11 +81,7 @@ def construire_base(
         # pandas refuse la différence de deux booléens, que calcule `geo.paires_contigues`
         expose = base[f"n_lyc_prive_{rayon}km"] > 0
         base[f"expose_lyc_prive_{rayon}km"] = expose.astype(int)
-
-    paires = geo.paires_contigues(base, list(config.VARIABLES_PAIRES))
-    stockage.ecrire_parquet(base, config.CHEMIN_BASE)
-    stockage.ecrire_parquet(paires, config.CHEMIN_PAIRES)
-    return base, lycees, paires
+    return base
 
 
 def ecrire_tableau_support() -> None:
@@ -74,12 +91,14 @@ def ecrire_tableau_support() -> None:
     écart d'IPS (b), population (c), lycées privés (d), support de l'exposition à 5 et 10 km (e)
     et faisabilité (f) : coût de Lyon (A11) et, pour Lille et Strasbourg, communes à moins de
     `config.DIST_FRONTIERE_KM` km du contour national (§5.2, A6) ; puis le détail des cellules
-    après fusion. Aucune donnée sur les cadres n'y entre. Le tableau est calculé une fois, avant
-    le choix des aires, et commité. Attention : `construire_base` tourne ici sur les 8 candidates
-    et écrase donc `config.CHEMIN_BASE` et `config.CHEMIN_PAIRES`, à reconstruire ensuite sur
-    les 3 aires retenues.
+    après fusion. Le tableau est calculé une fois, avant le choix des aires, et commité. La base
+    et les paires des 8 candidates sont construites ici sans la part de cadres, qui n'y entre
+    donc pas, et ne sont pas écrites : `final/` reste celui des aires retenues.
     """
-    base, lycees, paires = construire_base(config.AIRES_CANDIDATES)
+    referentiel = geo.referentiel_communes(config.AIRES_CANDIDATES)
+    lycees = lycees_avec_aire(referentiel)
+    base = _base_sans_cadres(referentiel, lycees)
+    paires = geo.paires_contigues(base, list(config.VARIABLES_PAIRES_SANS_CADRES))
     profil = analyse.profil_aires(lycees)
     criteres = pd.DataFrame(
         {

@@ -1,4 +1,4 @@
-"""Nettoyage et jointures des sources : lycées avec leur aire, leur IPS et leur IVAL, population."""
+"""Nettoyage et jointures des sources : lycées (aire, IPS, IVAL), population, part de cadres."""
 
 import geopandas as gpd
 import numpy as np
@@ -156,10 +156,7 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     du référentiel, au grain des arrondissements à Lyon : la commune parente 69123 n'est jamais
     lue, ce qui évite de compter Lyon deux fois. Le résultat se joint par `code_commune`.
     """
-    serie = serie.set_index("CODGEO")
-    manquantes = sorted(set(referentiel["code_commune"]) - set(serie.index))
-    assert not manquantes, f"Communes absentes de la série historique : {manquantes}"
-    pop_superficie = serie.loc[referentiel["code_commune"]]
+    pop_superficie = _lignes_du_referentiel(serie, referentiel, ["P22_POP", "SUPERF"])
     assert pop_superficie.notna().all().all(), "Population ou superficie manquante."
     assert (pop_superficie["SUPERF"] > 0).all(), "Superficie nulle ou négative."
     # Une commune sans habitant aurait une densité nulle, et un logarithme infini
@@ -168,7 +165,63 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
     densite = pop_superficie["P22_POP"] / pop_superficie["SUPERF"]
     return pd.DataFrame(
         {"pop_2022": pop_superficie["P22_POP"], "densite": densite, "log_densite": np.log(densite)}
-    ).rename_axis("code_commune")
+    )
+
+
+def part_cadres(effectifs: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFrame:
+    """Renvoie la part de cadres parmi les actifs de 25 à 54 ans en 2011 et en 2022.
+
+    `effectifs` vient de `collecte.evol_struct_rp2022`. La part est le groupe 3 (cadres et
+    professions intellectuelles supérieures) divisé par la somme des 6 groupes, c'est-à-dire les
+    actifs occupés et les chômeurs ayant déjà travaillé (PLAN §2.3, A11) : une fraction entre 0
+    et 1. `evol_cadres_pts` est la part de 2022 moins celle de 2011, en points de pourcentage.
+    `actifs_2022` sert de poids (§3.2) ; le seuil de 200 actifs de H3 se lit sur le plus petit de
+    `actifs_2011` et `actifs_2022` (A17). Lyon est lue au grain de ses arrondissements, comme
+    dans `population`. Une commune sans actif à une date n'a pas de part à cette date : A17 veut
+    ces communes nommées dans `config`, mais aucune des aires retenues n'est dans ce cas (voir
+    `config.ACTIFS_2554_2011`) ; une commune sans actif fait donc échouer. Le résultat se joint
+    par `code_commune`.
+    """
+    colonnes = [*config.ACTIFS_2554_2011, *config.ACTIFS_2554_2022]
+    actifs = _lignes_du_referentiel(effectifs, referentiel, colonnes)
+    assert actifs.notna().all().all(), "Effectif d'actifs de 25 à 54 ans manquant."
+    actifs_2011 = actifs[list(config.ACTIFS_2554_2011)].sum(axis=1)
+    actifs_2022 = actifs[list(config.ACTIFS_2554_2022)].sum(axis=1)
+    sans_actif = sorted(actifs.index[(actifs_2011 <= 0) | (actifs_2022 <= 0)])
+    assert not sans_actif, (
+        f"Communes sans actif de 25 à 54 ans en 2011 ou 2022, à nommer dans config (A17) : "
+        f"{sans_actif}"
+    )
+
+    part_2011 = actifs[config.CADRES_2554_2011] / actifs_2011
+    part_2022 = actifs[config.CADRES_2554_2022] / actifs_2022
+    # Le numérateur est l'un des 6 termes du dénominateur : hors de [0, 1], un effectif est négatif
+    assert part_2011.between(0, 1).all() and part_2022.between(0, 1).all(), (
+        "Part de cadres hors de [0, 1]."
+    )
+    return pd.DataFrame(
+        {
+            "part_cadres_2011": part_2011,
+            "part_cadres_2022": part_2022,
+            "evol_cadres_pts": (part_2022 - part_2011) * 100,
+            "actifs_2011": actifs_2011,
+            "actifs_2022": actifs_2022,
+        }
+    )
+
+
+def _lignes_du_referentiel(
+    fichier_insee: pd.DataFrame, referentiel: gpd.GeoDataFrame, colonnes: list[str]
+) -> pd.DataFrame:
+    """Renvoie `colonnes` d'un fichier communal de l'Insee pour les communes du référentiel.
+
+    `fichier_insee` a une colonne `CODGEO` ; le résultat est indexé par `code_commune`. Une
+    commune du référentiel absente du fichier fait échouer, en nommant les colonnes cherchées.
+    """
+    fichier_insee = fichier_insee.set_index("CODGEO")
+    manquantes = sorted(set(referentiel["code_commune"]) - set(fichier_insee.index))
+    assert not manquantes, f"Communes absentes du fichier de {colonnes} : {manquantes}"
+    return fichier_insee.loc[referentiel["code_commune"], colonnes].rename_axis("code_commune")
 
 
 def ival_par_lycee(

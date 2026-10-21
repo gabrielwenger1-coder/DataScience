@@ -133,6 +133,34 @@ def serie_historique_rp2022() -> pd.DataFrame:
     return serie
 
 
+def evol_struct_rp2022() -> pd.DataFrame:
+    """Renvoie les actifs de 25 à 54 ans par groupe socioprofessionnel, en 2011 et en 2022.
+
+    Une ligne par commune ou arrondissement (`CODGEO`), en COG 2025, avec les colonnes de
+    `config.ACTIFS_2554_2011` et `config.ACTIFS_2554_2022`. Les effectifs sont décimaux
+    (exploitation complémentaire du recensement). Les arrondissements de Lyon, Marseille et Paris
+    y figurent avec leur commune parente : sommer tout le fichier compterait ces villes deux
+    fois. Le zip de l'Insee est permanent : il est lu à son URL d'origine.
+    """
+    contenu = stockage.copie_controlee(
+        [config.URL_EVOL_STRUCT_RP2022],
+        config.CHEMIN_RAW_EVOL_STRUCT_RP2022,
+        config.SHA256_EVOL_STRUCT_RP2022,
+    )
+    with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
+        csv = io.BytesIO(archive.read(config.CSV_EVOL_STRUCT_RP2022))
+    colonnes = ["CODGEO", *config.ACTIFS_2554_2011, *config.ACTIFS_2554_2022]
+    # Lu en nombre, "01001" deviendrait 1001 ; une colonne disparue fait échouer la lecture
+    effectifs = pd.read_csv(csv, sep=";", usecols=colonnes, dtype={"CODGEO": str})
+
+    assert len(effectifs) == config.NB_LIGNES_EVOL_STRUCT_RP2022, (
+        f"{len(effectifs)} lignes dans « Évolution et structure », "
+        f"{config.NB_LIGNES_EVOL_STRUCT_RP2022} attendues."
+    )
+    assert effectifs["CODGEO"].is_unique, "Des codes communes sont en double."
+    return effectifs
+
+
 def ival_lycees() -> pd.DataFrame:
     """Renvoie les indicateurs de valeur ajoutée des lycées GT : une ligne par lycée et session.
 

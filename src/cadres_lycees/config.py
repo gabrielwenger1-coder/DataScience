@@ -33,8 +33,9 @@ AIRES_OUEST = ("Nantes", "Rennes")
 AIRES_FRONTALIERES = ("Lille", "Strasbourg")
 DIST_FRONTIERE_KM = 10
 # Écarts calculés dans les paires de communes contiguës : accès principal et secondaire (§5.3),
-# contrôles (§2.5, A7) et exposition 0/1 pour compter les paires de statut différent (§5.2, A6)
-VARIABLES_PAIRES = (
+# contrôles (§2.5, A7) et exposition 0/1 pour compter les paires de statut différent (§5.2, A6).
+# Le tableau de support s'en tient à ceux-là, sans la part de cadres (A3)
+VARIABLES_PAIRES_SANS_CADRES = (
     "dist_lyc_prive_min",
     "n_lyc_prive_5km",
     "dist_centre_km",
@@ -42,6 +43,7 @@ VARIABLES_PAIRES = (
     "expose_lyc_prive_5km",
     "expose_lyc_prive_10km",
 )
+VARIABLES_PAIRES = ("part_cadres_2022", *VARIABLES_PAIRES_SANS_CADRES)
 
 # Aires d'attraction des villes 2020 candidates : nom -> code AAV2020 (chaîne, le zéro compte)
 AIRES_CANDIDATES = {
@@ -113,6 +115,46 @@ CHEMIN_RAW_SERIE_RP2022 = "raw/base-cc-serie-historique-2022_csv.zip"
 CSV_SERIE_RP2022 = "base-cc-serie-historique-2022.CSV"
 # Communes et arrondissements du COG 2025, Mayotte exceptée
 NB_LIGNES_SERIE_RP2022 = 34903
+
+# « Évolution et structure de la population » du recensement 2022 (source 2) : actifs de 25 à 54
+# ans par groupe socioprofessionnel en 2011 et en 2022, en COG 2025, arrondissements de Lyon
+# compris (PLAN §2.3, A11). Zip permanent de l'Insee, lu à son URL d'origine ; son sha256
+# (observé le 20/10) est contrôlé à chaque lecture
+URL_EVOL_STRUCT_RP2022 = (
+    "https://www.insee.fr/fr/statistiques/fichier/8581696/base-cc-evol-struct-pop-2022_csv.zip"
+)
+SHA256_EVOL_STRUCT_RP2022 = "cb4b918862289527232ad79fb3b712d5f4635c6de5bae762e8d22a132717ed83"
+CHEMIN_RAW_EVOL_STRUCT_RP2022 = "raw/base-cc-evol-struct-pop-2022_csv.zip"
+CSV_EVOL_STRUCT_RP2022 = "base-cc-evol-struct-pop-2022.CSV"
+# Communes et arrondissements du COG 2025, Mayotte exceptée
+NB_LIGNES_EVOL_STRUCT_RP2022 = 34903
+# Actifs de 25 à 54 ans (occupés et chômeurs ayant déjà travaillé) des 6 groupes
+# socioprofessionnels, du groupe 1 au groupe 6 : leur somme est le dénominateur de la part de
+# cadres, et le groupe 3 en est le numérateur. 2022 en PCS 2020 : `GSEC13_23` réunit les
+# cadres en emploi (13) et au chômage (23). 2011 en PCS 2003 (`CS3`). Les deux premiers niveaux
+# sont les mêmes dans les deux nomenclatures, selon la documentation de l'Insee (§2.3, A17). Noms
+# recopiés de l'en-tête du fichier : la page de l'Insee nomme les employés `…_GSEC16_25`, alors
+# que le fichier dit `…_GSEC15_25`. Aucune commune des aires retenues n'a 0 actif en 2011 ou en
+# 2022 (au moins 12) : vérifié le 21/10 sans lire les cadres, avec le dénominateur calculé comme
+# `C.._POP2554` moins les retraités et les autres inactifs. A17 n'a donc aucune commune à nommer
+ACTIFS_2554_2022 = (
+    "C22_POP2554_STAT_GSEC11_21",
+    "C22_POP2554_STAT_GSEC12_22",
+    "C22_POP2554_STAT_GSEC13_23",
+    "C22_POP2554_STAT_GSEC14_24",
+    "C22_POP2554_STAT_GSEC15_25",
+    "C22_POP2554_STAT_GSEC16_26",
+)
+ACTIFS_2554_2011 = (
+    "C11_POP2554_CS1",
+    "C11_POP2554_CS2",
+    "C11_POP2554_CS3",
+    "C11_POP2554_CS4",
+    "C11_POP2554_CS5",
+    "C11_POP2554_CS6",
+)
+CADRES_2554_2022 = "C22_POP2554_STAT_GSEC13_23"
+CADRES_2554_2011 = "C11_POP2554_CS3"
 
 # Codes du filtre des lycées (PLAN §2.4) ; les libellés de la source ("Lycée", "Public"...)
 # restent dans collecte.py. `code_nature` : 300 général et technologique, 301 technologique,

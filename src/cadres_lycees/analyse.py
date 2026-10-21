@@ -205,7 +205,8 @@ def tableau_support(
 ) -> pd.DataFrame:
     """Renvoie le support de l'exposition, une ligne par aire et par rayon (§2.2 e, §5.2).
 
-    `base` et `paires` viennent de `pipeline.construire_base` ; `cellules` vient de
+    `base` et `paires` viennent de `pipeline.ecrire_tableau_support` : base sans la part de
+    cadres, paires sur `config.VARIABLES_PAIRES_SANS_CADRES` (A3) ; `cellules` vient de
     `cellules_anneaux`, avec une colonne `rayon_km`, pour chaque rayon de
     `config.RAYONS_SUPPORT_KM`. Colonnes : `communes`, `exposees` et `part_exposees` (au moins un
     lycée privé sous contrat dans le rayon), `cellules_estimables`, `paires_statut_different`
