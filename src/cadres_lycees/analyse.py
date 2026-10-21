@@ -1,0 +1,244 @@
+"""Statistiques descriptives et comparaisons sur la base communale et les lycées."""
+
+import itertools
+
+import geopandas as gpd
+import pandas as pd
+
+from cadres_lycees import accessibilite, config, nettoyage
+
+
+def profil_aires(lycees: gpd.GeoDataFrame) -> pd.DataFrame:
+    """Renvoie une ligne par aire : lycées, part de privé sous contrat et IPS moyen par secteur.
+
+    `part_prive` compte les lycées ; `part_prive_candidats` pondère chaque lycée par ses candidats
+    au bac (`poids_ival`, moyenne des présents au bac général et technologique 2012-2022), sur
+    les `n_avec_candidats` lycées qui ont une IVAL : plus proche d'une part d'élèves, sans en être
+    une au sens de la DEPP. L'IPS moyen est une moyenne simple des lycées qui ont un IPS, car la
+    source ne donne pas d'effectifs. `ecart_ips` est l'IPS moyen du privé moins celui du public,
+    en points d'IPS ; `n_ips_public` et `n_ips_prive` sont les nombres de lycées sur lesquels
+    reposent ces moyennes. Seuls les lycées situés dans les communes de l'aire comptent ; une
+    aire sans lycée privé, sans IPS dans un secteur ou sans IVAL dans un secteur fait échouer.
+    """
+    lycees = lycees[lycees["aire"].notna()]
+    prives = lycees[lycees["secteur"] == "prive"]
+    profil = pd.DataFrame(
+        {
+            "n_lycees": lycees.groupby("aire").size(),
+            "n_prive": prives.groupby("aire").size(),
+        }
+    )
+    profil["part_prive"] = profil["n_prive"] / profil["n_lycees"]
+
+    avec_candidats = lycees[lycees["poids_ival"].notna()]
+    par_secteur = avec_candidats.groupby(["aire", "secteur"])["poids_ival"].sum()
+    candidats_par_secteur = par_secteur.unstack("secteur")
+    profil["part_prive_candidats"] = candidats_par_secteur["prive"] / (
+        candidats_par_secteur["prive"] + candidats_par_secteur["public"]
+    )
+    profil["n_avec_candidats"] = avec_candidats.groupby("aire").size()
+
+    ips = lycees.groupby(["aire", "secteur"])["ips"].agg(["mean", "count"]).unstack("secteur")
+    profil["ips_public"] = ips[("mean", "public")]
+    profil["ips_prive"] = ips[("mean", "prive")]
+    profil["ecart_ips"] = profil["ips_prive"] - profil["ips_public"]
+    profil["n_ips_public"] = ips[("count", "public")]
+    profil["n_ips_prive"] = ips[("count", "prive")]
+
+    colonnes = ["n_prive", "part_prive_candidats", "ips_public", "ips_prive"]
+    manquants = profil[colonnes].isna().any(axis=1)
+    assert not manquants.any(), (
+        f"Pas de lycée privé, d'IVAL ou d'IPS dans un secteur : {profil.index[manquants].tolist()}."
+    )
+    return profil
+
+
+def fiabilite_ival(
+    base: gpd.GeoDataFrame, lycees: gpd.GeoDataFrame, sessions_ival: pd.DataFrame
+) -> pd.DataFrame:
+    """Renvoie la fiabilité de `ival_moy_5km` (PLAN §3.2, A7), toutes aires ensemble puis par aire.
+
+    `base` et `lycees` viennent de `pipeline.construire_base`, sur les 3 aires retenues. Pour
+    chaque moitié de `config.MOITIES_IVAL`, `ival_moy_5km` est recalculée avec les lycées de la
+    règle A1 qui ont assez de sessions dans les deux moitiés, et leurs poids A1. Colonnes : `r`
+    (Pearson, après centrage par aire), `r_spearman_brown` (manquante si `r` est négatif),
+    `n_communes_h3` (population de H3), `n_communes` (renseignées dans les deux moitiés) et
+    `n_lycees` (lycées distincts à 5 km de ces communes). Seule la ligne « ensemble » tranche H3.
+    """
+    rayon = config.RAYON_PRINCIPAL_KM
+    communes = base.set_index("code_commune")
+    moities = [f"moitie_{rang}" for rang in range(1, len(config.MOITIES_IVAL) + 1)]
+
+    retenus = lycees[lycees["ival"].notna()].copy()
+    for moitie, (premiere, derniere) in zip(moities, config.MOITIES_IVAL, strict=True):
+        ival = nettoyage.ival_par_lycee(
+            sessions_ival, premiere, derniere, config.NB_SESSIONS_MIN_MOITIE
+        )
+        retenus[moitie] = retenus["uai"].map(ival["ival"])
+    retenus = retenus.dropna(subset=moities)
+
+    population_h3 = communes[communes[f"n_lyc_{rayon}km"] > 0]
+    par_commune = population_h3[["aire"]].copy()
+    for moitie in moities:
+        acces = accessibilite.indicateurs(
+            base, retenus, "lyc", rayons=(rayon,), attribut=moitie, poids="poids_ival"
+        )
+        par_commune[moitie] = acces[f"{moitie}_moy_{rayon}km"]
+    # Une commune sort si aucun de ses lycées à 5 km n'a assez de sessions dans chaque moitié :
+    # elle reste comptée dans `n_communes_h3`, pour que la perte se voie
+    renseignees = par_commune.dropna(subset=moities)
+
+    # Centrage par aire : H3 se lit dans chaque aire, les écarts entre aires ne doivent pas faire
+    # la corrélation
+    centrees = renseignees[moities] - renseignees.groupby("aire")[moities].transform("mean")
+    centrees["aire"] = renseignees["aire"]
+    # `indicateurs` ne dit pas quels lycées entrent dans chaque rayon : on refait la jointure
+    # pour compter les lycées distincts
+    centroides = communes.set_geometry("centroide")[["centroide"]]
+    proches = gpd.sjoin(
+        centroides.loc[centrees.index],
+        retenus[["uai", "geometry"]],
+        predicate="dwithin",
+        distance=rayon * 1000,
+    )
+
+    groupes = {"ensemble": centrees}
+    for aire, groupe in centrees.groupby("aire"):
+        groupes[aire] = groupe
+    lignes = {}
+    for nom, groupe in groupes.items():
+        assert len(groupe) >= 3, f"Trop peu de communes pour une corrélation ({nom})."
+        r = groupe[moities[0]].corr(groupe[moities[1]])
+        h3 = population_h3 if nom == "ensemble" else population_h3[population_h3["aire"] == nom]
+        lignes[nom] = {
+            "r": r,
+            # La formule suppose une fiabilité positive : pour r < 0, elle n'a pas de sens
+            "r_spearman_brown": 2 * r / (1 + r) if r >= 0 else float("nan"),
+            "n_communes_h3": len(h3),
+            "n_communes": len(groupe),
+            "n_lycees": proches.loc[groupe.index, "uai"].nunique(),
+        }
+    return pd.DataFrame.from_dict(lignes, orient="index")
+
+
+def _distances_groupes(
+    communes_aire: pd.DataFrame, colonne_exposition: str, bas: float, haut: float
+) -> tuple[pd.Series, pd.Series]:
+    """Renvoie les distances au centre des communes exposées, puis non exposées, de [bas, haut)."""
+    dans_la_cellule = communes_aire["dist_centre_km"].between(bas, haut, inclusive="left")
+    cellule = communes_aire[dans_la_cellule]
+    exposee = cellule[colonne_exposition] == 1
+    return cellule.loc[exposee, "dist_centre_km"], cellule.loc[~exposee, "dist_centre_km"]
+
+
+def cellules_anneaux(communes: pd.DataFrame, rayon: int) -> pd.DataFrame:
+    """Renvoie, aire par aire, les cellules d'anneaux de distance au centre après fusion (§5.2).
+
+    Règles fixées par A6 avant tout calcul. Une cellule remplit la condition si les communes
+    exposées (`expose_lyc_prive_<rayon>km` vaut 1) et les non exposées sont chacune au moins
+    `config.EFFECTIF_MIN_GROUPE`. Tant qu'une cellule échoue, la plus proche du centre est
+    fusionnée avec sa voisine qui compte le moins de communes, la plus proche du centre à
+    égalité ; un anneau vide reste une cellule et peut donc être absorbé. Une cellule qui remplit
+    la condition n'est estimable que si `ecart_dist_km`, l'écart des distances moyennes au
+    centre des deux groupes, vaut au plus `config.ECART_DIST_MAX_KM`, sans nouvelle fusion. Une
+    aire dont la dernière cellule échoue est non estimable : une seule ligne, `estimable` faux.
+    Les anneaux vont de leur borne basse, incluse, à leur borne haute, exclue.
+    """
+    colonne_exposition = f"expose_lyc_prive_{rayon}km"
+    assert communes[colonne_exposition].isin([0, 1]).all(), (
+        f"{colonne_exposition} doit valoir 0 ou 1."
+    )
+    assert (communes["dist_centre_km"] >= 0).all(), "Distance au centre manquante ou négative."
+    bornes = [*config.ANNEAUX_KM, float("inf")]
+
+    lignes = []
+    for aire, communes_aire in communes.groupby("aire"):
+        # Une cellule est une suite d'anneaux contigus : ses bornes suffisent à la décrire
+        cellules = list(itertools.pairwise(bornes))
+        while True:
+            groupes = [
+                _distances_groupes(communes_aire, colonne_exposition, bas, haut)
+                for bas, haut in cellules
+            ]
+            remplies = [
+                min(len(dist_exposees), len(dist_non_exposees)) >= config.EFFECTIF_MIN_GROUPE
+                for dist_exposees, dist_non_exposees in groupes
+            ]
+            if all(remplies) or len(cellules) == 1:
+                break
+            rang = remplies.index(False)
+            voisines = [voisine for voisine in (rang - 1, rang + 1) if 0 <= voisine < len(cellules)]
+            nb_communes = [
+                len(dist_exposees) + len(dist_non_exposees)
+                for dist_exposees, dist_non_exposees in groupes
+            ]
+            # La voisine qui compte le moins de communes ; à égalité, le plus petit rang, donc
+            # la plus proche du centre
+            voisine = min(voisines, key=lambda candidate: (nb_communes[candidate], candidate))
+            interieure, exterieure = sorted((rang, voisine))
+            cellules[interieure] = (cellules[interieure][0], cellules[exterieure][1])
+            del cellules[exterieure]
+
+        for (bas, haut), (dist_exposees, dist_non_exposees), remplie in zip(
+            cellules, groupes, remplies, strict=True
+        ):
+            ecart = abs(dist_exposees.mean() - dist_non_exposees.mean())
+            lignes.append(
+                {
+                    "aire": aire,
+                    "bas_km": bas,
+                    "haut_km": haut,
+                    "n_exposees": len(dist_exposees),
+                    "n_non_exposees": len(dist_non_exposees),
+                    "dist_moy_exposees": dist_exposees.mean(),
+                    "dist_moy_non_exposees": dist_non_exposees.mean(),
+                    "ecart_dist_km": ecart,
+                    # Une cellule en échec n'est jamais estimable, même équilibrée
+                    "estimable": bool(remplie and ecart <= config.ECART_DIST_MAX_KM),
+                }
+            )
+    return pd.DataFrame(lignes)
+
+
+def tableau_support(
+    base: gpd.GeoDataFrame, paires: pd.DataFrame, cellules: pd.DataFrame
+) -> pd.DataFrame:
+    """Renvoie le support de l'exposition, une ligne par aire et par rayon (§2.2 e, §5.2).
+
+    `base` et `paires` viennent de `pipeline.construire_base` ; `cellules` vient de
+    `cellules_anneaux`, avec une colonne `rayon_km`, pour chaque rayon de
+    `config.RAYONS_SUPPORT_KM`. Colonnes : `communes`, `exposees` et `part_exposees` (au moins un
+    lycée privé sous contrat dans le rayon), `cellules_estimables`, `paires_statut_different`
+    (l'exposition 0/1 diffère entre les deux voisines) et `correlation_non_centree` entre
+    `d_dist_lyc_prive_min` et `d_dist_centre_km` dans les paires : sans centrage, elle ne
+    dépend pas du sens i − j, qui suit l'ordre des codes (A6).
+    """
+    x, y = paires["d_dist_lyc_prive_min"], paires["d_dist_centre_km"]
+    produits = pd.DataFrame({"xy": x * y, "xx": x**2, "yy": y**2, "aire": paires["aire"]})
+    sommes = produits.groupby("aire").sum()
+    correlation = sommes["xy"] / (sommes["xx"] * sommes["yy"]) ** 0.5
+
+    lignes = []
+    for rayon in config.RAYONS_SUPPORT_KM:
+        colonne_exposition = f"expose_lyc_prive_{rayon}km"
+        par_aire = base.groupby("aire")[colonne_exposition]
+        cellules_rayon = cellules[cellules["rayon_km"] == rayon]
+        estimables = cellules_rayon.groupby("aire")["estimable"].sum()
+        statut_different = paires[f"d_{colonne_exposition}"] != 0
+        support = pd.DataFrame(
+            {
+                "communes": par_aire.size(),
+                "exposees": par_aire.sum(),
+                "part_exposees": par_aire.mean(),
+                "cellules_estimables": estimables,
+                "paires_statut_different": statut_different.groupby(paires["aire"]).sum(),
+                "correlation_non_centree": correlation,
+            }
+        )
+        support.insert(0, "rayon_km", rayon)
+        lignes.append(support)
+    resultat = pd.concat(lignes).rename_axis("aire").reset_index()
+    # Une aire sans cellule à un rayon ou sans paire aurait des valeurs manquantes
+    manquantes = resultat.columns[resultat.isna().any()].tolist()
+    assert not manquantes, f"Valeurs manquantes dans le tableau de support : {manquantes}."
+    return resultat
