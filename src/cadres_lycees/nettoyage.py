@@ -151,7 +151,7 @@ def population(serie: pd.DataFrame, referentiel: gpd.GeoDataFrame) -> pd.DataFra
 
     `serie` vient de `collecte.serie_historique_rp2022`. `densite` est en habitants par km², avec
     `SUPERF`, la superficie de l'Insee, et non la surface des contours : même source que la
-    population (choix de l'étudiant du 20/10). `log_densite` est la forme sous laquelle la
+    population (journal du 20/10). `log_densite` est la forme sous laquelle la
     densité sert de contrôle (A7), tant sa distribution est asymétrique. Les communes sont celles
     du référentiel, au grain des arrondissements à Lyon : la commune parente 69123 n'est jamais
     lue, ce qui évite de compter Lyon deux fois. Le résultat se joint par `code_commune`.

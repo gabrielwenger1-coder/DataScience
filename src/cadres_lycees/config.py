@@ -66,8 +66,8 @@ VARIABLE_BUCKET_S3 = "BUCKET_S3"
 PREFIXE_S3 = "projet-cadres-lycees"
 DOSSIER_LOCAL = Path(__file__).parents[2] / "data"
 # Adresses de lecture publique des copies gelées des sources qui changent sans prévenir (PLAN §7,
-# A2) : le dossier raw/ du bucket de Giulio, qui doit rester accessible jusqu'à la soutenance,
-# puis en repli une release GitHub du dépôt (les deux hébergements, choix de l'étudiant du
+# A2) : le dossier raw/ du bucket du projet sur le SSPCloud, qui doit rester accessible jusqu'à
+# la soutenance, puis en repli une release GitHub du dépôt (les deux hébergements, journal du
 # 20/10). Le sha256 de chaque copie est contrôlé à chaque lecture, quelle que soit sa provenance
 URL_COPIES_S3 = "https://minio.lab.sspcloud.fr/gfogato/projet-cadres-lycees/"
 URL_COPIES_RELEASE = (

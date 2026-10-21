@@ -6,7 +6,30 @@ Projet du cours « Python pour la data science » (ENSAE), rendu le 24 novembre 
 
 Dans des aires urbaines de province aux traditions scolaires contrastées, les communes offrant un meilleur accès à des lycées privés ou à forte valeur ajoutée concentrent-elles davantage de cadres que leurs voisines, et ce lien résiste-t-il face aux autres infrastructures ?
 
-Le plan complet est dans [`docs/PLAN.md`](docs/PLAN.md).
+Le plan complet et le journal des décisions sont dans [`docs/PLAN.md`](docs/PLAN.md). La méthode tient en une page ci-dessous.
+
+## Méthode en bref
+
+**Unité et périmètre.** La commune (les arrondissements à Lyon), au COG 2025, dans trois aires d'attraction des villes (zonage Insee 2020) : Nantes, Lyon et Strasbourg. Elles ont été choisies parmi 8 candidates sur le [tableau de support](docs/tableau_support.md) (poids du privé, taille, nombre de lycées privés, support de l'exposition), avant toute donnée sur les cadres.
+
+**Variable à expliquer.** La part des cadres et professions intellectuelles supérieures parmi les actifs de 25 à 54 ans (occupés et chômeurs ayant déjà travaillé), en 2011 et en 2022, et son évolution en points (Insee, « Évolution et structure de la population » 2022).
+
+**Accès aux lycées.** Lycées généraux, technologiques et polyvalents, publics et privés sous contrat (annuaire de l'éducation du 13/10/2026). Depuis le centroïde de chaque commune, à vol d'oiseau : nombre de lycées à 5 km (3 et 10 km en robustesse), distance au lycée privé le plus proche, valeur ajoutée moyenne des lycées à 5 km (IVAL, taux d'accès de la seconde au bac, sessions 2012 à 2022). Tous les lycées de métropole comptent, y compris hors des aires.
+
+**Contrôles.** Distance au centre de l'aire, densité (en logarithme), aire. Ne sont jamais des contrôles, car en partie des conséquences de la part de cadres : le niveau de vie, l'IPS des lycées et la croissance de la population.
+
+**Hypothèses et comparaisons.**
+
+| | Énoncé | Estimation principale |
+|---|---|---|
+| H1 | À distance égale du centre, plus de cadres là où l'accès au privé sous contrat est meilleur | Paires de communes contiguës : écart de part de cadres sur l'écart de distance au lycée privé le plus proche, avec les écarts de distance au centre et de densité, sans constante ; intervalles par bootstrap des communes. En complément : anneaux de distance au centre, cellules d'au moins 15 communes exposées et 15 non exposées et d'écart de distance au centre d'au plus 2 km |
+| H2 | Lien plus faible dans l'Ouest (Nantes), où le privé est plus répandu | H1 aire par aire, comparée sans test |
+| H3 | La qualité des lycées (IVAL), plus que leur nombre, accompagne la hausse de la part de cadres | Régression de l'évolution sur l'IVAL et le nombre de lycées, centrés réduits dans l'aire, effet fixe aire × anneau ; bootstrap par grappes de communes |
+| H4 | Lien plus fort avec les lycées qu'avec les autres équipements | Même mesure d'accès pour les gares, les médecins et les équipements |
+
+**Règles de verdict, fixées avant les données.** H1 est « confirmée » si la pente principale va dans le sens attendu avec un intervalle à 95 % qui exclut zéro, si la pente secondaire (nombre de lycées privés à 5 km) va dans le même sens, et si les anneaux estimables aux deux rayons concordent. Elle est « nuancée » ou « infirmée » selon des règles symétriques. Un résultat nul n'est dit « établi » que s'il existe un anneau estimable aux deux rayons ; sinon le verdict est « non concluant ». H3 n'est testable que si la mesure de l'IVAL est assez fiable (au moins 0,5 ; 0,608 mesuré le 20/10), et son verdict se lit sur la différence entre la pente de la qualité et celle du nombre. Les règles complètes sont au §5 du plan.
+
+**Garde-fous.** Les choix sont écrits avant les résultats et chaque écart est daté dans le journal (§13 du plan). Les sources qui changent sans prévenir sont lues dans des copies gelées contrôlées par leur `sha256`. Le projet décrit des associations, pas des effets causaux : causalité inverse (un lycée privé s'installe là où vivent déjà des cadres), sélection résidentielle non observée, distances à vol d'oiseau.
 
 ## Résultats clés
 
