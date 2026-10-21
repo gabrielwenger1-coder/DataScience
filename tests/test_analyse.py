@@ -1,6 +1,10 @@
-"""Test de `analyse.cellules_anneaux` sur des communes jouets (PLAN §5.2, amendement A6).
+"""Tests des trois calculs d'analyse du PLAN §7, sur des données jouets calculables à la main.
 
-Les attendus sont calculés à la main avec les règles fixées par A6 : anneaux de départ
+Fusion des anneaux (`analyse.cellules_anneaux`, §5.2, A6), poids du bootstrap par commune
+(`analyse.poids_bootstrap`, §5.3) et invariance de la pente des paires au sens i − j
+(`analyse.pente_paires`, §5.3).
+
+Fusion des anneaux : attendus calculés à la main avec les règles fixées par A6 : anneaux de départ
 `config.ANNEAUX_KM` (0, 5, 10, 20, 30 km), au moins `config.EFFECTIF_MIN_GROUPE` (15) communes
 exposées et 15 non exposées par cellule, écart des distances moyennes au centre d'au plus
 `config.ECART_DIST_MAX_KM` (2 km).
@@ -9,6 +13,7 @@ exposées et 15 non exposées par cellule, écart des distances moyennes au cent
 import math
 
 import pandas as pd
+import pytest
 
 from cadres_lycees import analyse, config
 
@@ -90,3 +95,90 @@ def test_fusion_des_anneaux_puis_equilibre() -> None:
         columns=COLONNES,
     )
     pd.testing.assert_frame_equal(obtenu, attendu, check_dtype=False)
+
+
+def test_poids_bootstrap_produit_des_tirages() -> None:
+    """Le poids d'une paire est le produit des tirages de ses deux communes (§5.3).
+
+    Tirage : 44001 deux fois, 44002 zéro, 44003 une fois, 44004 trois fois. Une somme donnerait
+    2, 3, 5 et 4 : seul le produit annule une paire dont une commune n'est pas tirée.
+    """
+    # Paires d'une aire extraites de la table complète : l'index ne part pas de 0.
+    paires = pd.DataFrame(
+        {
+            "code_commune_i": ["44001", "44001", "44001", "44003"],
+            "code_commune_j": ["44002", "44003", "44004", "44004"],
+        },
+        index=[3, 7, 8, 12],
+    )
+    # Pas dans l'ordre des paires : le tirage se lit par code, pas par position.
+    tirage = pd.Series({"44004": 3, "44002": 0, "44001": 2, "44003": 1})
+
+    poids = analyse.poids_bootstrap(paires, tirage)
+
+    attendu = pd.Series(
+        [
+            0,  # 2 × 0 : 44002 n'est pas tirée, la paire sort de ce tirage
+            2,  # 2 × 1
+            6,  # 2 × 3
+            3,  # 1 × 3
+        ],
+        index=paires.index,
+    )
+    pd.testing.assert_series_equal(poids, attendu, check_dtype=False, check_names=False)
+
+    # Une commune oubliée du tirage ne doit pas compter pour 0 sans erreur.
+    with pytest.raises(AssertionError):
+        analyse.poids_bootstrap(paires, tirage.drop("44002"))
+
+
+def test_pente_paires_invariante_au_sens_i_j() -> None:
+    """Pente connue, inchangée quand on inverse le sens de paires, avec ou sans poids (§5.3, A6).
+
+    Inverser une paire multiplie toute sa ligne par −1 (écart de part de cadres et régresseurs) :
+    sans constante, X'X et X'y ne changent pas, puisque (−1)² = 1. Avec une constante, la colonne
+    de 1 ne change pas de signe : ici la pente vaudrait 0,5, puis 1 après l'inversion.
+    """
+    acces = "d_dist_lyc_prive_min"
+    # d_part = 2 × d_dist_prive + 0,5 × d_dist_centre + 1 × d_log_densite + résidu
+    #   index  d_dist_prive  d_dist_centre  d_log_densite  résidu  d_part
+    #     0          1              2              0          −1     2 + 1 + 0 − 1 = 2
+    #     1          2              0              1          −2     4 + 0 + 1 − 2 = 3
+    #     2         −1              1              1           1     −2 + 0,5 + 1 + 1 = 0,5
+    #     3          1              0              0           6     2 + 6 = 8
+    #     4          0              1              0           1     0,5 + 1 = 1,5
+    #     5          0              0              1           1     1 + 1 = 2
+    # Le résidu est orthogonal aux trois régresseurs (−1 − 4 − 1 + 6 = 0, −2 + 1 + 1 = 0,
+    # −2 + 1 + 1 = 0) : les moindres carrés sans constante retrouvent exactement 2. Sans résidu,
+    # une régression avec constante donnerait 2 aussi. Sans le contrôle de densité : 2,12.
+    paires = pd.DataFrame(
+        {
+            "code_commune_i": ["44001", "44001", "44002", "44002", "44003", "44004"],
+            "code_commune_j": ["44002", "44003", "44003", "44004", "44005", "44005"],
+            "d_part_cadres_2022": [2.0, 3.0, 0.5, 8.0, 1.5, 2.0],
+            acces: [1.0, 2.0, -1.0, 1.0, 0.0, 0.0],
+            "d_dist_centre_km": [2.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+            "d_log_densite": [0.0, 1.0, 1.0, 0.0, 0.0, 1.0],
+        }
+    )
+    # Paires 1 et 3 prises dans l'autre sens (j − i), puis lignes mélangées.
+    inversees = [1, 3]
+    colonnes_d = ["d_part_cadres_2022", acces, "d_dist_centre_km", "d_log_densite"]
+    retournees = paires.copy()
+    retournees.loc[inversees, ["code_commune_i", "code_commune_j"]] = paires.loc[
+        inversees, ["code_commune_j", "code_commune_i"]
+    ].to_numpy()
+    retournees.loc[inversees, colonnes_d] = -paires.loc[inversees, colonnes_d]
+    retournees = retournees.loc[[3, 0, 5, 1, 4, 2]]
+
+    assert analyse.pente_paires(paires, acces) == pytest.approx(2)
+    assert analyse.pente_paires(retournees, acces) == pytest.approx(2)
+
+    # Poids comme des produits de tirages : un poids k compte la paire k fois (§5.3), 0 la retire.
+    # Pente des paires dupliquées : 5,77. Des poids ignorés donneraient 2, des poids élevés au
+    # carré 6,85, des poids lus par position et non par index dans `retournees` 2,67.
+    poids = pd.Series([2, 0, 1, 3, 1, 2], index=paires.index)
+    dupliquees = paires.loc[paires.index.repeat(poids.to_numpy())].reset_index(drop=True)
+    attendu = analyse.pente_paires(dupliquees, acces)
+    assert analyse.pente_paires(paires, acces, poids) == pytest.approx(attendu)
+    assert analyse.pente_paires(retournees, acces, poids) == pytest.approx(attendu)

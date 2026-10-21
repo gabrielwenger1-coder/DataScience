@@ -3,6 +3,7 @@
 import itertools
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from cadres_lycees import accessibilite, config, nettoyage
@@ -243,3 +244,78 @@ def tableau_support(
     manquantes = resultat.columns[resultat.isna().any()].tolist()
     assert not manquantes, f"Valeurs manquantes dans le tableau de support : {manquantes}."
     return resultat
+
+
+def pente_paires(paires: pd.DataFrame, acces: str, poids: pd.Series | None = None) -> float:
+    """Renvoie la pente de `d_part_cadres_2022` sur l'écart d'accès `acces` dans les paires (§5.3).
+
+    Moindres carrés sans constante, avec les écarts de `config.CONTROLES_PAIRES` en contrôle. Le
+    sens i − j suit l'ordre des codes : changer le signe de toutes les colonnes d'une paire ne
+    change pas cette pente, alors qu'une constante en dépendrait (A6). `poids`, aligné sur
+    `paires`, pondère les paires (bootstrap) ; sans poids, chaque paire compte une fois.
+    """
+    colonnes = [acces, *config.CONTROLES_PAIRES]
+    x = paires[colonnes].to_numpy(dtype=float)
+    y = paires["d_part_cadres_2022"].to_numpy(dtype=float)
+    assert not (np.isnan(x).any() or np.isnan(y).any()), "Écart manquant dans les paires."
+    if poids is None:
+        poids_paires = np.ones(len(paires))
+    else:
+        # `.loc` échoue si une paire n'a pas de poids, là où `reindex` mettrait une valeur manquante
+        poids_paires = poids.loc[paires.index].to_numpy(dtype=float)
+    assert (poids_paires >= 0).all(), "Poids de paire négatif ou manquant."
+    # Σ w(y − xb)² = Σ (√w·y − √w·xb)² : les moindres carrés ordinaires sur les lignes
+    # multipliées par √w sont les moindres carrés pondérés, et un poids entier k revient à
+    # compter la paire k fois
+    racine = np.sqrt(poids_paires)
+    coefficients, _, rang, _ = np.linalg.lstsq(x * racine[:, None], y * racine, rcond=None)
+    # lstsq rend une solution même si des régresseurs sont colinéaires : on l'interdit
+    assert rang == len(colonnes), f"Régresseurs colinéaires dans les paires (rang {rang})."
+    return float(coefficients[0])
+
+
+def poids_bootstrap(paires: pd.DataFrame, tirage: pd.Series) -> pd.Series:
+    """Renvoie le poids de chaque paire dans un tirage du bootstrap par commune (§5.3).
+
+    `tirage` donne, par code commune, le nombre de fois que la commune est tirée. Une même commune
+    est dans plusieurs paires, qui ne sont donc pas indépendantes : on tire les communes, et une
+    paire compte autant de fois que le produit des tirages de ses deux communes.
+    """
+    tirage_i = paires["code_commune_i"].map(tirage)
+    tirage_j = paires["code_commune_j"].map(tirage)
+    assert tirage_i.notna().all() and tirage_j.notna().all(), (
+        "Communes des paires absentes du tirage."
+    )
+    return tirage_i * tirage_j
+
+
+def pentes_paires_par_aire(paires: pd.DataFrame, acces: str) -> pd.DataFrame:
+    """Renvoie, aire par aire, la pente des paires et son intervalle à 95 % (§5.3).
+
+    `paires` vient de `pipeline.construire_base`. Intervalle : percentiles 2,5 et 97,5 des pentes
+    de `config.NB_TIRAGES_BOOTSTRAP` tirages avec remise des communes de l'aire (voir
+    `poids_bootstrap`). La graine `config.GRAINE_BOOTSTRAP` est remise à chaque appel : le
+    résultat est reproductible, et deux appels sur les mêmes paires (principale et secondaire,
+    lycées et autres équipements pour H4) voient les mêmes tirages. Les tirages d'une aire
+    dépendent des aires traitées avant elle. Colonnes : `pente`, `ic_bas`, `ic_haut`, `n_paires`,
+    `n_communes` ; index : l'aire.
+    """
+    generateur = np.random.default_rng(config.GRAINE_BOOTSTRAP)
+    lignes = {}
+    for aire, paires_aire in paires.groupby("aire"):
+        communes = pd.unique(
+            pd.concat([paires_aire["code_commune_i"], paires_aire["code_commune_j"]])
+        )
+        pentes = []
+        for _ in range(config.NB_TIRAGES_BOOTSTRAP):
+            tirees = generateur.choice(communes, size=len(communes), replace=True)
+            tirage = pd.Series(tirees).value_counts().reindex(communes, fill_value=0)
+            pentes.append(pente_paires(paires_aire, acces, poids_bootstrap(paires_aire, tirage)))
+        lignes[aire] = {
+            "pente": pente_paires(paires_aire, acces),
+            "ic_bas": np.percentile(pentes, 2.5),
+            "ic_haut": np.percentile(pentes, 97.5),
+            "n_paires": len(paires_aire),
+            "n_communes": len(communes),
+        }
+    return pd.DataFrame.from_dict(lignes, orient="index").rename_axis("aire")

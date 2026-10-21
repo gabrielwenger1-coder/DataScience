@@ -18,6 +18,13 @@ ANNEAUX_KM = (0, 5, 10, 20, 30)
 EFFECTIF_MIN_GROUPE = 15
 ECART_DIST_MAX_KM = 2
 
+# H1, paires de communes contiguës (§5.3, A6) : écarts de contrôle des pentes, estimées sans
+# constante (§2.5, A7) ; bootstrap des communes : nombre de tirages et graine fixée, pour des
+# résultats reproductibles et des pentes comparées sur les mêmes tirages
+CONTROLES_PAIRES = ("d_dist_centre_km", "d_log_densite")
+NB_TIRAGES_BOOTSTRAP = 1000
+GRAINE_BOOTSTRAP = 20261021
+
 # Sorties de `pipeline.construire_base` (PLAN §4, étape G)
 CHEMIN_BASE = "final/base_communale.parquet"
 CHEMIN_PAIRES = "final/paires.parquet"
