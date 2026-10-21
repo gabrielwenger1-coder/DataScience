@@ -1,0 +1,48 @@
+project:
+  type: website
+  output-dir: _site
+  # Sans cette liste, Quarto rendrait aussi les brouillons de notebooks/exploration/
+  render:
+    - rapport.ipynb
+
+# nb-clean retire les sorties des notebooks à chaque commit : le rendu doit donc exécuter le
+# rapport, depuis les copies gelées (PLAN §4, étape G)
+execute:
+  enabled: true
+
+lang: fr
+
+website:
+  title: "Lycées et géographie des cadres"
+  navbar:
+    right:
+      - icon: github
+        href: https://github.com/gabrielwenger1-coder/DataScience
+        aria-label: Dépôt du projet
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-title: Sommaire
+    code-fold: true
+    code-summary: Code
+    # Quarto donne aux figures matplotlib leur largeur en pixels : sans cette règle, une figure
+    # plus large que la colonne est coupée au lieu d'être réduite
+    include-in-header:
+      text: |
+        <style>.figure-img { max-width: 100%; height: auto; }</style>
+    # Une carte folium créée dans un onglet caché est cadrée sur une surface nulle et montre le
+    # monde entier : elle est recréée la première fois que son onglet s'affiche
+    include-after-body:
+      text: |
+        <script>
+        document.addEventListener("shown.bs.tab", (evenement) => {
+          const panneau = document.querySelector(evenement.target.dataset.bsTarget);
+          panneau.querySelectorAll("iframe[srcdoc]:not([data-recree])").forEach((carte) => {
+            carte.dataset.recree = "oui";
+            carte.srcdoc = carte.srcdoc;
+          });
+        });
+        </script>

@@ -308,3 +308,42 @@ Elle contient les arrondissements et reproduit exactement le fichier série pour
 - **IVAL** : les guides 2016, 2020 et 2023 ; la concordance des `code_commune` avec le COG 2025.
 - **cartiflette** : un SSPCloud neuf (extensions duckdb) ; le millésime de `POPULATION`.
 - **Table de passage** : la légende des codes `MOD` du fichier de mouvements, déduite des lignes.
+
+## 12. Part de cadres par IRIS : bases infracommunales « Activité des résidents » (explorées le 20/10)
+
+Aucune valeur de cadres des 3 aires retenues n'a été lue : seulement des comptes d'IRIS. Les chiffres sur les cadres viennent d'autres aires.
+- **2022** : `https://www.insee.fr/fr/statistiques/fichier/8647006/base-ic-activite-residents-2022_csv.zip` (35 900 269 octets, sha256 `f4aefb7fab425b9f7eb802e2afb475908bbf2186e0d88f542cf7a67fc70623cb`), `base-ic-activite-residents-2022.CSV` : `;`, CRLF, point décimal, 49 276 lignes × 119 colonnes, lire `IRIS` et `COM` en chaîne. Cadres `C22_ACT1564_STAT_GSEC13_23` ; 6 groupes `C22_ACT1564_STAT_GSEC11_21` à `…16_26`.
+- **2011** : `https://www.insee.fr/fr/statistiques/fichier/2028668/infra-activite-resident-2011.zip` (39 644 845 octets, sha256 `05076a23c7a3e6bab7aadae8e1b12c17ed1a2aff395340edd59df1474719e7ea`), un seul xls : `pd.read_excel(f, sheet_name="IRIS", header=5, dtype=str, engine="calamine")`, 50 867 lignes. Cadres `C11_ACT1564_CS3` ; groupes `C11_ACT1564_CS1` à `CS6`. Feuille « Précision » : CV des cadres d'un IRIS de plus de 18 % sous 50 cadres, 14 % de 100 à 199, 10 % de 200 à 299, moins de 3 % à 1 000 et plus.
+- **Piège principal : 15-64 ans seulement.** Aucun fichier IRIS ne croise les 25-54 ans avec la CSP (`P22_ACT2554` existe, sans CSP) : une carte à l'IRIS ne porte pas sur la variable du plan (§2.3). Hors des aires, corrélation de 0,977 entre les parts de cadres 15-64 et 25-54 ans des communes (ACT5 2022, 13 439 communes de 200 actifs et plus).
+- **Dénominateur** : la somme des 6 groupes se reconstruit comme pour la commune (écart avec `…_ACT1564` : 1,5 % en 2022, chômeurs n'ayant jamais travaillé). La somme des IRIS égale `TD_ACT5_2022` pour 28 869 communes.
+- **Géographie** : données 2022 en IRIS et COG 2024, données 2011 en géographie 2013. Lyon : `COM` en 693xx pour les 185 IRIS des arrondissements, `69123` absent. `69159` (2024) devient `69114` (2025).
+- **3 aires** : 1 723 IRIS en 2022 (Nantes 344, Lyon 924, Strasbourg 455), 1 747 en 2011 ; IRIS non découpés (une commune entière) : 87, 342 et 246 ; dénominateur nul (IRIS d'activité ou divers) : 2, 6 et 3 en 2022.
+- **Même IRIS en 2011 et 2022** : pas de table unique. Tables `reference_IRIS_geoAAAA.zip` de la page `https://www.insee.fr/fr/information/7708995` (feuille `Modifications_IRIS`, à enchaîner de 2016 à 2024). Dans les 3 aires : 1 695 IRIS stables sur 1 723 ; 13 communes fusionnées (sommer les constituantes de 2011) ; 15 IRIS sans équivalent (Pierre-Bénite, Dardilly, Lyon 9e, Sainte-Luce-sur-Loire, Divatte-sur-Loire).
+- **Règle retenue pour la carte (A18, `nettoyage.part_cadres_iris`, 21/10)** : un IRIS est comparable s'il a le même code et une part aux deux dates, sauf l'IRIS unique (`CCCCC0000`) d'une commune non découpée qui en a absorbé une autre entre les géographies 2013 et 2024 (repérée par la table de passage annuelle 2025, paires uniques `CODGEO_2013` / `CODGEO_2024`). Dans une commune découpée qui en absorbe une autre, les IRIS de la commune absorbante gardent leur territoire (recouvrement IGN 2013/2024 de 0,97 à 0,995 à Oullins) et le territoire absorbé reçoit de nouveaux codes, absents en 2011 : exclure toute la commune griserait 13 IRIS stables à tort (Oullins 11, Divatte-sur-Loire 2). Résultat, compté sans aucune part de cadres : 1 695 IRIS stables, dont 1 679 avec des actifs aux deux dates (Nantes 338, Lyon 897, Strasbourg 444). Pas de seuil d'actifs (A18 n'en prévoit pas) : la note de la carte dit seulement qu'une part d'IRIS de moins de 200 actifs est peu précise.
+- **Piège : contours IGN 2013 (CONTOURS-IRIS 1.0)** : les polygones y sont permutés à l'intérieur de certaines communes (44169, 67130, 69100), alors que les noms et les actifs concordent entre 2011 et 2022. Ne pas s'en servir pour juger la stabilité d'un IRIS ; la carte utilise les contours 2025 de cartiflette pour les deux dates.
+- **Zoom** : la commune-centre de Strasbourg s'étend sur 17,3 km du nord au sud ; un carré de 18 km (`config.ZOOM_IRIS_KM` = 9) couvre les trois communes-centres, Villeurbanne comprise.
+- **Contours** : cartiflette 0.4.0 a un niveau IRIS, `carti_download(values=<code AAV>, borders="IRIS", filter_by="AIRE_ATTRACTION_VILLES", year=2025, simplification=0)` : 344, 924 et 455 polygones, EPSG:4326, `CODE_IRIS` unique ; millésimes 2025 et 2026 seulement. À Lyon, `INSEE_COM` vaut 69123 : joindre sur `CODE_IRIS` ou `INSEE_COG`. Alternative : IGN CONTOURS-IRIS en 7z (2013 et 2024), dont les polygones diffèrent pour un même code.
+- **Plus fin** : les carreaux de 200 m (Filosofi 2019) n'ont aucune CSP.
+
+## 13. Flux de cadres entre communes : fichier détail MIGCOM 2022 (exploré le 20/10)
+
+- **Fichier** : `https://www.insee.fr/fr/statistiques/fichier/8589767/RP2022_migcom.parquet` (183 472 132 octets, sha256 `4c1f5814231c7f670bf190e3cb6711b9b2c48e1637da5a1d59ee90e810384732`), 17 357 182 lignes, 33 colonnes, toutes en chaîne sauf `IPONDI`. Page republiée le 20/10/2026 : à geler. Le zip CSV se télécharge tronqué sans erreur.
+- **Variables** : `COMMUNE`, `ARM` (arrondissement, sinon `ZZZZZ`), `DCRAN` (commune un an avant, déjà au grain arrondissement ; `99999` = étranger), `IRAN` (2 = autre logement de la même commune, 3 à 5 = autre commune de métropole, 8 et 9 = étranger), `GS` (`3` = cadres), `GSM`, `AGEREVQ` (`025` à `050`), `LPRM` (`1` = personne de référence), `IPONDI`. Pas d'IRIS.
+- **Pièges** :
+  - **COG 2024**, pas 2025 : à Lyon, `69159` devient `69114`, qu'une jointure sur le COG 2025 perd sans erreur ;
+  - `GS = 3` ne couvre que les cadres **en emploi** (96,2 % du numérateur du plan) : la part du §2.3 ne se refait pas avec MIGCOM ;
+  - **sous-échantillon d'environ 1/5** (poids médian 5 dans les petites communes) : dans des aires témoins (Clermont-Ferrand, Grenoble), la commune médiane reçoit 1 à 2 lignes d'arrivées de cadres de 25-54 ans et presque toutes les paires origine-destination n'ont qu'une ligne. Lisible seulement agrégé (anneaux, pôle et couronne) ;
+  - départs vers l'étranger invisibles : solde net biaisé.
+- **2011** : pas de fichier comparable (premier millésime à 1 an : 2013 ; avec CSP : 2016, en `CS1`).
+
+## 14. Ménages de cadres récemment emménagés par IRIS : fichier détail INDCVI 2022 (exploré le 20/10)
+
+- **Fichiers** : zips régionaux, pas le Parquet national (tronqué sans erreur à 134 Mo sur 488). Zone C (Nantes, Strasbourg) `https://www.insee.fr/fr/statistiques/fichier/8647104/RP2022_indcvizc.zip` (92 019 001 octets, sha256 `a4954aef447625fb5b6a1d8a8b87616d616232a09c37e046a23fc82bfc6645ff`) ; zone E (Lyon) `…/RP2022_indcvize.zip` (131 779 069 octets, sha256 `0943dd298091a758635874afb3bcf7c863811cc9ed588b70455e7513f3d6be63`). Un téléchargement sur cinq s'est arrêté sans erreur : contrôler le sha256.
+- **Variables** : `IRIS` (9 caractères, COG 2024), `CATIRIS`, `STAT_GSEC` (`13` et `23` = cadres occupés et chômeurs ayant travaillé, la définition du plan), `PCSL`, `ANEMR` (`00` = moins de 2 ans, `01` = 2 à 4 ans), `IRAN`, `AGEREVQ`, `LPRM`, `NE17FR`, `IPONDI`. Clé ménage `(CANTVILLE, NUMMI)`. Sommes vérifiées égales aux bases IRIS publiques.
+- **Pièges** :
+  - IRIS seulement pour les IRIS d'au moins 200 habitants des communes découpées : 62 à 72 % de la population des 3 aires ; ailleurs `XXXX` ou `ZZZZZZZZZ` ;
+  - « moins de 2 ans » est bruité : environ 10 ménages de cadres par IRIS dans les aires témoins (CV d'environ 30 %), moins de 5 avec enfants ;
+  - dans les communes de 10 000 habitants et plus, environ un cinquième des emménagés récents vient d'une pseudo-enquête 2016 (report de l'EAR 2021) ;
+  - `ANEMR = 00` ne veut pas dire « arrivé l'an dernier » (24 % sont dans le même logement un an avant).
+- **LOGEMT 2022** a l'IRIS et l'année d'emménagement détaillée mais aucune CSP. **INDCVI 2011** existe (texte, virgule décimale, `CS1`, `ANEMR`, sans `IRAN` ni `STAT_GSEC`).
+- **Rien de plus fin que l'IRIS** sur la CSP n'est diffusé (secret statistique, arrêté du 19 juillet 2007) : aucune carte « à la rue » ou « par ménage » n'est possible avec des données publiques.

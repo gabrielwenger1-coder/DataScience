@@ -12,3 +12,6 @@ _site/
 CLAUDE.local.md
 __pycache__/
 *.pyc
+
+/.quarto/
+**/*.quarto_ipynb
