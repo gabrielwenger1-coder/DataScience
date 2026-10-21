@@ -1,6 +1,10 @@
-"""Test de `analyse.cellules_anneaux` sur des communes jouets (PLAN §5.2, amendement A6).
+"""Tests des trois calculs d'analyse du PLAN §7, sur des données jouets calculables à la main.
 
-Les attendus sont calculés à la main avec les règles fixées par A6 : anneaux de départ
+Fusion des anneaux (`analyse.cellules_anneaux`, §5.2, A6), poids du bootstrap par commune
+(`analyse.poids_bootstrap`, §5.3) et invariance de la pente des paires au sens i − j
+(`analyse.pente_paires`, §5.3).
+
+Fusion des anneaux : attendus calculés à la main avec les règles fixées par A6 : anneaux de départ
 `config.ANNEAUX_KM` (0, 5, 10, 20, 30 km), au moins `config.EFFECTIF_MIN_GROUPE` (15) communes
 exposées et 15 non exposées par cellule, écart des distances moyennes au centre d'au plus
 `config.ECART_DIST_MAX_KM` (2 km).
@@ -124,7 +128,7 @@ def test_poids_bootstrap_produit_des_tirages() -> None:
     pd.testing.assert_series_equal(poids, attendu, check_dtype=False, check_names=False)
 
     # Une commune oubliée du tirage ne doit pas compter pour 0 sans erreur.
-    with pytest.raises((KeyError, AssertionError)):
+    with pytest.raises(AssertionError):
         analyse.poids_bootstrap(paires, tirage.drop("44002"))
 
 

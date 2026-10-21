@@ -19,8 +19,8 @@ EFFECTIF_MIN_GROUPE = 15
 ECART_DIST_MAX_KM = 2
 
 # H1, paires de communes contiguës (§5.3, A6) : écarts de contrôle des pentes, estimées sans
-# constante (§2.5, A7) ; bootstrap des communes, le même nombre de tirages et la même graine pour
-# toutes les pentes, pour qu'elles se comparent sur les mêmes tirages
+# constante (§2.5, A7) ; bootstrap des communes : nombre de tirages et graine fixée, pour des
+# résultats reproductibles et des pentes comparées sur les mêmes tirages
 CONTROLES_PAIRES = ("d_dist_centre_km", "d_log_densite")
 NB_TIRAGES_BOOTSTRAP = 1000
 GRAINE_BOOTSTRAP = 20261021
